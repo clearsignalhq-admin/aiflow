@@ -19,3 +19,18 @@ s3_prefix = "aiflow"
 parameter_overrides = "SupabaseUrl=\"https://yzyjxwmnluboirzdpiwt.supabase.co\" FrontendOrigin=\"main.d15u51yaw3tgv0.amplifyapp.com\""
 image_repositories = []
 disable_rollback = true
+
+[aiflow.deploy.parameters]
+stack_name = "aiflow"
+resolve_s3 = true
+s3_prefix = "aiflow"
+region = "us-east-1"
+profile = "aiflow"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+disable_rollback = true
+parameter_overrides = "SupabaseUrl=\"https://yzyjxwmnluboirzdpiwt.supabase.co\" FrontendOrigin=\"main.d15u51yaw3tgv0.amplifyapp.com\""
+image_repositories = []
+
+[aiflow.global.parameters]
+region = "us-east-1"

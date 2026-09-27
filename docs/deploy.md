@@ -100,6 +100,16 @@ SAM will output the **API Gateway URL** at the end — copy it, you'll need it f
 ```powershell
 sam build && sam deploy
 ```
+or do it one by one
+
+```powershell
+sam build
+```
+
+```powershell
+sam deploy --profile aiflow
+```
+
 
 ---
 
