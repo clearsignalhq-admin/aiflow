@@ -2107,7 +2107,8 @@ body {
    ═══════════════════════════════════════════════════════════════════════ */
 
 .landing {
-  min-height: 100vh; background: var(--bg-body); color: var(--text);
+  height: 100vh; overflow-y: auto;
+  background: var(--bg-body); color: var(--text);
   font-family: inherit;
 }
 
@@ -2298,6 +2299,24 @@ body {
 .landing-footer-links { display: flex; gap: 20px; }
 .landing-footer-links a { color: var(--text-3); text-decoration: none; }
 .landing-footer-links a:hover { color: var(--text-2); }
+
+@media (max-width: 860px) {
+  .landing-nav { padding: 12px 20px; }
+  .landing-hero { flex-direction: column; gap: 32px; padding: 48px 20px 40px; }
+  .landing-hero-visual { display: none; }
+  .landing-problem-grid { grid-template-columns: 1fr; }
+  .landing-examples-grid { grid-template-columns: 1fr; }
+  .landing-tech-grid { grid-template-columns: repeat(2, 1fr); }
+  .landing-pipeline { gap: 16px; }
+  .landing-pipeline-arrow { display: none; }
+}
+
+@media (max-width: 520px) {
+  .landing-nav-links a:not(.landing-nav-login):not(.landing-nav-cta):not(.landing-nav-theme) { display: none; }
+  .landing-tech-grid { grid-template-columns: 1fr; }
+  .landing-nodes-grid { grid-template-columns: 1fr 1fr; }
+  .landing-container { padding: 0 16px; }
+}
 
 /* ═══════════════════════════════════════════════════════════════════════
    ADMIN PAGE
