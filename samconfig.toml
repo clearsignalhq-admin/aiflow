@@ -16,6 +16,6 @@ profile = "aiflow"
 [default.deploy.parameters]
 resolve_s3 = true
 s3_prefix = "aiflow"
-parameter_overrides = "SupabaseUrl=\"https://yzyjxwmnluboirzdpiwt.supabase.co\" FrontendOrigin=\"aiflow.d1et3kbekq7lb5.amplifyapp.com\""
+parameter_overrides = "SupabaseUrl=\"https://yzyjxwmnluboirzdpiwt.supabase.co\" FrontendOrigin=\"main.d15u51yaw3tgv0.amplifyapp.com\""
 image_repositories = []
 disable_rollback = true
