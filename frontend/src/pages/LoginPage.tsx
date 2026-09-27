@@ -17,6 +17,11 @@ export default function LoginPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    document.title = 'Sign In — AiFlow';
+    return () => { document.title = 'AiFlow'; };
+  }, []);
+
+  useEffect(() => {
     if (!TURNSTILE_SITE_KEY || !turnstileRef.current) return;
     let widgetId: string | undefined;
     let timer: ReturnType<typeof setTimeout>;

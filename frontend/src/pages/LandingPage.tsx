@@ -54,6 +54,11 @@ export default function LandingPage() {
   }, [isDark]);
 
   useEffect(() => {
+    document.title = 'AiFlow — Visual AI Workflow Designer';
+    return () => { document.title = 'AiFlow'; };
+  }, []);
+
+  useEffect(() => {
     track('page_view', 'landing');
   }, [track]);
 
@@ -237,6 +242,7 @@ export default function LandingPage() {
             <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer">GitHub</a>
             <Link to="/request-access">Request access</Link>
             <Link to="/login">Sign in</Link>
+            <a href="mailto:fuatyazar@gmail.com">Contact</a>
           </div>
         </div>
       </footer>

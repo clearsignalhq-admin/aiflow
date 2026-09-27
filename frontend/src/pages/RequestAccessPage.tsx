@@ -22,6 +22,11 @@ export default function RequestAccessPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    document.title = 'Request Access — AiFlow';
+    return () => { document.title = 'AiFlow'; };
+  }, []);
+
+  useEffect(() => {
     track('page_view', 'request_access');
   }, [track]);
 
