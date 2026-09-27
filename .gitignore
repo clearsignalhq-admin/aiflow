@@ -89,3 +89,4 @@ target/
 .DS_Store
 Thumbs.db
 Desktop.ini
+/.aws-sam/build.toml

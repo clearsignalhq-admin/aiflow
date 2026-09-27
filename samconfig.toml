@@ -14,13 +14,8 @@ disable_rollback = false
 profile = "aiflow"
 
 [default.deploy.parameters]
-# These will be prompted for on first run (sam deploy --guided)
-# or can be set here (not recommended for secrets — use environment variables)
-#
-# parameter_overrides = [
-#   "LLMApiKey=sk-...",
-#   "SupabaseUrl=https://xxx.supabase.co",
-#   "SupabaseServiceRoleKey=...",
-#   "SupabaseJwtSecret=...",
-#   "FrontendOrigin=main.d1abc.amplifyapp.com",
-# ]
+resolve_s3 = true
+s3_prefix = "aiflow"
+parameter_overrides = "SupabaseUrl=\"https://yzyjxwmnluboirzdpiwt.supabase.co\" FrontendOrigin=\"aiflow.d1et3kbekq7lb5.amplifyapp.com\""
+image_repositories = []
+disable_rollback = true
