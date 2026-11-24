@@ -1,6 +1,6 @@
 # AiFlow — Async Suite Runs: Design Note (Task 44 spike)
 
-**Date:** 2026-11-24 · **Status:** design only, no production code · **Feeds:** the dataset / suite work in `docs/future/2026-11-24 AiFlow - Future Directions.md` (Tier B: B1–B3) · **Related:** Task 42 (persisted runs)
+**Date:** 2026-11-24 · **Status:** design; prerequisites (Tasks 46–49) implemented the same day · **Feeds:** the dataset / suite work in `docs/future/2026-11-24 AiFlow - Future Directions.md` (Tier B: B1–B3) · **Related:** Task 42 (persisted runs)
 
 A *suite run* executes one workflow against N test cases and aggregates the results. This note decides how that fits the current deployment (AWS Lambda behind an API Gateway HTTP API), before any B-tier code is written.
 
@@ -12,15 +12,30 @@ A *suite run* executes one workflow against N test cases and aggregates the resu
 |---|---|---|---|
 | 1 | The API is an API Gateway **HTTP API** (`AWS::Serverless::HttpApi`). Its integration timeout is **30 s, a hard limit** | `template.yaml` | No synchronous request can exceed 30 s, whatever the Lambda timeout says. (An earlier brainstorm said ~29 s; for an HTTP API it is 30 s. Re-verify against current AWS quotas.) |
 | 2 | Lambda timeout is **60 s**, 512 MB, Python 3.12 | `template.yaml` Globals | The Lambda could run longer than the gateway will wait. A client would see a 503 while the function keeps running and spending LLM money |
-| 3 | `POST /workflows/simulate` wraps the run in `asyncio.wait_for(..., 120.0)` | `routes.py` | The 120 s guard can never fire before the gateway cuts the request at 30 s. It should be at most ~25 s |
+| 3 | `POST /workflows/simulate` wraps the run in `asyncio.wait_for(..., 120.0)` | `routes.py` | The 120 s guard can never fire before the gateway cuts the request at 30 s. It should be at most ~25 s. **Fixed (Task 48):** simulate/resume guard 25 s, whole-request budget 28 s, generate/chat 25 s, Lambda `Timeout` 30 s; timeouts return a clear 504 |
 | 4 | Lambda synchronous request/response payload limit is **6 MB** | AWS quota | A suite response must be paged; never return all traces in one body |
-| 5 | HITL / user-pick pause state lives in the **in-memory** `_paused_store` | `services/simulator.py` | On Lambda, the resume request usually lands on a different container (or after a cold start) and gets "No paused simulation found". **Pause/resume works locally but is unreliable in production.** See §7 |
+| 5 | HITL / user-pick pause state lives in the **in-memory** `_paused_store` | `services/simulator.py` | On Lambda, the resume request usually lands on a different container (or after a cold start) and gets "No paused simulation found". **Pause/resume works locally but is unreliable in production.** See §7. **Fixed (Task 46):** the continuation is stored with the run and rebuilt on resume |
 | 6 | slowapi's `Limiter` uses in-memory storage | `core/limiter.py` | Rate limits are per container, so `5/hour` on `/access-requests` is not a global limit |
-| 7 | `increment_usage` reads then writes the counter | `core/supabase_client.py` | Not atomic. Concurrent requests undercount. Fine for one-at-a-time use, wrong for suites |
+| 7 | `increment_usage` reads then writes the counter | `core/supabase_client.py` | Not atomic. Concurrent requests undercount. Fine for one-at-a-time use, wrong for suites. **Fixed (Task 47):** single-statement SQL function called over RPC |
 | 8 | Usage limits are per day: demo 10 executions / 20 LLM requests, approved unlimited | `config.py`, `template.yaml` | A 20-case suite would consume a demo user's whole day if each case counts as an execution |
 | 9 | The mock simulator is pure Python with no I/O; a real-LLM node costs one provider call (typically seconds) | `node_handlers.py` | Mock suites are cheap and fast; real-LLM suites and LLM judges are what break the 30 s wall |
 
-**Measure before deciding thresholds.** "Cheap and fast" for mock mode is expected, not measured. Time a 12-node example (`examples/complex/*`) over 100 cases on a Lambda-sized container and record p50/p95 before fixing the synchronous cutoff in §3.
+**Measured (Task 49, 2026-11-24).** `backend/benchmarks/bench_simulation.py` runs every example workflow for 300 cases in mock mode (case *i* uses seed *i*, so branches vary) on a Windows 11 developer machine, Python 3.13:
+
+| Workflow | Nodes | Avg steps | Engine p95 | Run-record build p95 | Whole case p95 | Record size p95 |
+|---|---|---|---|---|---|---|
+| complex / ai-research-agent (worst) | 12 | 9.3 | 0.20 ms | 0.13 ms | **0.33 ms** | 9.9 KB |
+| complex / multi-agent-customer-journey | 12 | 8.0 | 0.17 ms | 0.12 ms | 0.29 ms | 9.7 KB |
+| medium / customer-support | 8 | 7.5 | 0.19 ms | 0.11 ms | 0.30 ms | 7.7 KB |
+| easy / email-auto-reply | 3 | 3.0 | 0.05 ms | 0.05 ms | 0.09 ms | 3.3 KB |
+
+Reading it:
+
+- **The mock engine is not a constraint.** The worst case is ~0.3 ms, about 3,000+ cases per second per core.
+- **Lambda estimate (not measured here).** CPU scales with memory, and 512 MB is roughly 0.3 of a vCPU, so allow ~3–4× slower: ~1–1.5 ms per case. Verify with one real deploy before relying on it.
+- **Wall time is dominated by I/O that this benchmark does not cover:** one Supabase insert per saved run (typically tens to a few hundred ms, **unmeasured**), real LLM calls (seconds each), and cold starts. Sequentially saving 50 runs at ~100 ms each would take ~5 s, which is why suite case runs should be written with **one bulk insert** (PostgREST accepts an array) rather than one request per case.
+- Per-case records are 3–10 KB, so a 50-case suite stores well under 1 MB.
+- `tests/test_simulation_performance.py` guards the engine loosely (100 cases of the largest example in under 2 s) so accidental slowdowns or I/O in the engine are caught.
 
 ---
 
@@ -57,7 +72,7 @@ POST   /api/suite-runs/{job_id}/cases/{case_id}/run   → 200 case result      (
 
 State machine: `queued → running → complete | failed | cancelled`. A case result is `passed | failed | error | skipped`.
 
-- **Synchronous fast path:** mock-mode suites of up to N cases *may* run inside a single request when the measured p95 fits under ~20 s. Pick N from the measurement in §1. Real-LLM suites are always asynchronous.
+- **Synchronous fast path:** mock-mode suites run inside one request, up to the per-tier case cap (suggested 50). By the §1 measurements the engine needs well under a second for 50 cases even on a small Lambda; the case results must be stored with a single bulk insert to stay inside the 25 s guard. Real-LLM suites and anything with an LLM judge are always asynchronous (one LLM call alone can take several seconds).
 - **Per-case timeout:** 25 s, so one slow case never reaches the 30 s wall. A timed-out case is `error` and the job continues.
 - **Stale jobs:** a job `running` with no progress for 15 min is marked `failed` on the next read.
 - **No pauses inside suites:** suite runs force `hitl_mode = auto-approve` and `condition_mode` ∈ {expression, random}. A paused case would hold a job open indefinitely.
@@ -94,7 +109,7 @@ State machine: `queued → running → complete | failed | cancelled`. A case re
 
 ## 7. Related problem found while writing this: pause/resume on Lambda
 
-Fact 5 matters beyond suites. HITL pause (and the user-pick pause added in Task 43) keep their continuation in process memory, so in the deployed Lambda a resume request will often hit a different container and fail with "No paused simulation found". The persisted run (Task 42) already holds the trace and the workflow snapshot; what is missing is the continuation (queue + visited set). **Recommended follow-up (Task 46): store the continuation with the run row and rebuild `_PausedState` from it on resume**, so pause/resume works across invocations. This is independent of suites and worth doing first, because it fixes shipped behaviour.
+Fact 5 matters beyond suites. HITL pause (and the user-pick pause added in Task 43) keep their continuation in process memory, so in the deployed Lambda a resume request will often hit a different container and fail with "No paused simulation found". The persisted run (Task 42) already holds the trace and the workflow snapshot; what is missing is the continuation (queue + visited set). **Resolved in Task 46:** the continuation (queue, visited set, pause kind, branch choices, branch data) is stored in `workflow_runs.continuation` and `_PausedState` is rebuilt from it on resume, scoped to the requesting user. It is cleared when the run is no longer paused. If the run cannot be stored or restored, resume still works within the same process as before.
 
 ## 8. Decisions needed from the owner
 
@@ -103,12 +118,12 @@ Fact 5 matters beyond suites. HITL pause (and the user-pick pause added in Task 
 3. Should a suite consume the same daily allowance as one-off simulations, or get its own?
 4. Assertion/judge scope for the first release: deterministic assertions only, or an LLM judge too (adds cost and the calibration problem, B9)?
 
-## 9. Proposed follow-up tasks (not scheduled)
+## 9. Follow-up tasks
 
-| Task | Scope |
-|---|---|
-| 46 | Durable pause/resume: persist the continuation with the run; rebuild on resume (§7) |
-| 47 | Atomic usage counter via SQL function + RPC; use it everywhere (§5) |
-| 48 | Lower the simulate guard from 120 s to ≤ 25 s and return a clear 504 body (§1 #3) |
-| 49 | Benchmark mock-simulation throughput on a Lambda-sized container; fix the synchronous cutoff (§1, §3) |
-| 50 | Suites data model + job API + Option A executor (B1–B3) |
+| Task | Scope | Status |
+|---|---|---|
+| 46 | Durable pause/resume: persist the continuation with the run; rebuild on resume (§7) | Done |
+| 47 | Atomic usage counter via SQL function + RPC (§5) | Done. Suites can add N units in one call (`by=N`) |
+| 48 | Align timeouts with the 30 s gateway limit; clear 504s (§1 #3) | Done |
+| 49 | Benchmark mock simulation; fix the synchronous cutoff (§1, §3) | Done (results in §1) |
+| 50 | Suites data model + job API + Option A executor (B1–B3) | **Waiting on the owner decisions in §8** |

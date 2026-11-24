@@ -18,6 +18,7 @@ from app.core import supabase_client as db
 from app.core.config import settings
 from app.models.workflow import Workflow
 from app.schemas.simulation import ExecutionTrace, SimulationEvaluation, SimulationSettings
+from app.services import simulator
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +35,7 @@ def build_run_record(
     trace: ExecutionTrace,
     evaluation: Optional[SimulationEvaluation],
     max_bytes: Optional[int] = None,
+    continuation: Optional[dict[str, Any]] = None,
 ) -> Optional[dict[str, Any]]:
     """Return the row to store, shrunk to the size cap, or None if it cannot be made to fit."""
     cap = settings.max_run_bytes if max_bytes is None else max_bytes
@@ -50,6 +52,7 @@ def build_run_record(
         "trace": trace.model_dump(mode="json"),
         "evaluation": evaluation.model_dump(mode="json") if evaluation else None,
         "truncated": False,
+        "continuation": continuation,
     }
     if _size(record) <= cap:
         return record
@@ -63,7 +66,8 @@ def build_run_record(
 
 
 def build_run_update(trace: ExecutionTrace, evaluation: Optional[SimulationEvaluation],
-                     max_bytes: Optional[int] = None) -> Optional[dict[str, Any]]:
+                     max_bytes: Optional[int] = None,
+                     continuation: Optional[dict[str, Any]] = None) -> Optional[dict[str, Any]]:
     """Columns that change when a paused run is resumed."""
     cap = settings.max_run_bytes if max_bytes is None else max_bytes
     patch: dict[str, Any] = {
@@ -72,6 +76,7 @@ def build_run_update(trace: ExecutionTrace, evaluation: Optional[SimulationEvalu
         "trace": trace.model_dump(mode="json"),
         "evaluation": evaluation.model_dump(mode="json") if evaluation else None,
         "truncated": False,
+        "continuation": continuation,   # None clears it once the run is no longer paused
     }
     if _size(patch) <= cap:
         return patch
@@ -93,12 +98,14 @@ async def persist_run(
     sim_settings: SimulationSettings,
     trace: ExecutionTrace,
     evaluation: Optional[SimulationEvaluation],
+    continuation: Optional[dict[str, Any]] = None,
 ) -> Optional[str]:
     """Store a run; returns its id, or None if it was not saved."""
     if not _enabled():
         return None
     try:
-        record = build_run_record(user_id, workflow, input_data, sim_settings, trace, evaluation)
+        record = build_run_record(user_id, workflow, input_data, sim_settings, trace, evaluation,
+                                  continuation=continuation)
         if record is None:
             logger.warning("Run %s not stored: exceeds %d bytes even without step data",
                            trace.trace_id, settings.max_run_bytes)
@@ -111,17 +118,45 @@ async def persist_run(
         return None
 
 
-async def update_run(user_id: str, trace: ExecutionTrace, evaluation: Optional[SimulationEvaluation]) -> bool:
+async def update_run(
+    user_id: str,
+    trace: ExecutionTrace,
+    evaluation: Optional[SimulationEvaluation],
+    continuation: Optional[dict[str, Any]] = None,
+) -> bool:
     """Update a stored run after a resume. Scoped to the user, so it can never touch another user's row."""
     if not _enabled():
         return False
     try:
-        patch = build_run_update(trace, evaluation)
+        patch = build_run_update(trace, evaluation, continuation=continuation)
         if patch is None:
             return False
         return await db.update_run(user_id, trace.trace_id, patch)
     except Exception as exc:
         logger.warning("Run %s not updated: %s", trace.trace_id, exc)
+        return False
+
+
+async def load_paused(user_id: str, trace_id: str) -> bool:
+    """Make a paused run resumable in this process by rebuilding it from its stored row.
+
+    Needed on Lambda, where the resume request often reaches a different container than the
+    one that paused. Scoped to ``user_id``: another user's run is never loaded.
+    """
+    if not _enabled():
+        return False
+    try:
+        row = await db.get_run(user_id, trace_id)
+        if not row or row.get("status") != "paused" or not row.get("continuation"):
+            return False
+        return simulator.restore_paused_state(
+            ExecutionTrace.model_validate(row["trace"]),
+            Workflow.model_validate(row["workflow"]),
+            SimulationSettings.model_validate(row["settings"]),
+            row["continuation"],
+        )
+    except Exception as exc:
+        logger.warning("Paused run %s could not be restored: %s", trace_id, exc)
         return False
 
 

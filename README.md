@@ -125,7 +125,7 @@ Open **http://localhost:5173**.
 ## Running Tests
 
 ```bash
-# Backend (295 tests)
+# Backend (342 tests)
 cd backend
 .venv/Scripts/pytest -v       # Windows
 pytest -v                     # macOS / Linux
@@ -253,7 +253,7 @@ Every simulation is saved to your account, including its settings, input, the wo
 - Retention: the newest 50 runs per user, for at most 30 days (`MAX_RUNS_PER_USER`, `RUN_RETENTION_DAYS`)
 - A run larger than 500 KB (`MAX_RUN_BYTES`) is saved without per-step inputs/outputs and marked *trimmed*; if it still does not fit it is not saved
 - Saving is best-effort: if storage is unavailable the simulation still succeeds, it just does not appear in History
-- Requires the `workflow_runs` table: apply `supabase/update_202611241200.sql` (already part of `supabase/schema.sql` for new projects)
+- Requires the `workflow_runs` table (`supabase/update_202611241200.sql`). Resuming a paused run from another server process also needs `supabase/update_202611241400.sql` (adds `continuation`). Daily usage counting uses `supabase/update_202611241500.sql` (atomic `increment_usage` function). All three are already part of `supabase/schema.sql` for new projects; apply them in order on an existing project
 
 #### LLM Evaluation
 
@@ -375,7 +375,8 @@ Stop-Process -Id (Get-NetTCPConnection -LocalPort 8000).OwningProcess -Force
 
 - **Simulator uses mock handlers only** — no real LLM, API, DB, or RAG calls during simulation
 - **Size limits** — a workflow may have at most 100 nodes and 300 edges, 20 KB of config per node, and request bodies are capped at 1 MB (`MAX_REQUEST_BYTES`). Larger imports are rejected with a clear message
-- **Pause/resume is in-memory** — HITL and user-pick pauses are held in the server process. Locally that is fine; on AWS Lambda a resume request can reach a different container and fail with "No paused simulation found". Fix planned (see `docs/AiFlow - Async Suite Runs Design.md` §7)
+- **Pause/resume needs saved runs on Lambda** — a paused simulation's continuation is stored with its run, so any container (or a restarted server) can resume it. If run saving is unavailable (no Supabase, or the migrations below are not applied), a pause is held only in the server process and a resume can fail on Lambda with "No paused simulation found"
+- **Request time limit** — simulate/resume stop after 25 s and a whole request after 28 s, because API Gateway cuts requests at 30 s. Use mock mode or a smaller workflow for long runs; slow AI evaluations fall back to the built-in review with a note
 - **Workflow persists in this browser only** — localStorage keeps your work across refreshes, but it is tied to the current browser/device; multi-device or team access requires the cloud features listed in the roadmap
 - Single LLM provider (OpenAI / LangChain wrapper)
 - No authentication or multi-user support

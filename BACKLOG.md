@@ -539,7 +539,7 @@ Design-only, before any dataset/suite work (§8.3 #4).
 
 Source: `docs/AiFlow - Async Suite Runs Design.md` §9. Not scheduled.
 
-### Task 46 — Durable Pause/Resume `[ ]`
+### Task 46 — Durable Pause/Resume `[x]`
 
 HITL and user-pick pauses live in process memory, so on Lambda a resume often fails (design note §1 #5, §7).
 
@@ -548,19 +548,19 @@ HITL and user-pick pauses live in process memory, so on Lambda a resume often fa
 - Schema change follows the migration convention (`schema.sql` + `update_YYYYMMDDhhmm.sql`)
 - pytest: pause, drop the in-memory store, resume still works
 
-### Task 47 — Atomic Usage Counter `[ ]`
+### Task 47 — Atomic Usage Counter `[x]`
 
 `increment_usage` reads then writes, so concurrent requests undercount (design note §1 #7, §5).
 
 - SQL function `increment_usage(user, field, by int)` using `insert … on conflict do update set x = x + by`; call it via Supabase RPC
 - Replace the read-modify-write in `supabase_client.py`; supports increments greater than 1 for suites
 
-### Task 48 — Align Simulation Timeout With the Gateway `[ ]`
+### Task 48 — Align Simulation Timeout With the Gateway `[x]`
 
 - Lower the `asyncio.wait_for` guard in `/workflows/simulate` from 120 s to ≤ 25 s (API Gateway HTTP API cuts requests at 30 s)
 - Return a clear 504 body; consider Lambda `Timeout` in `template.yaml` (currently 60 s)
 
-### Task 49 — Benchmark Mock Simulation `[ ]`
+### Task 49 — Benchmark Mock Simulation `[x]`
 
 - Measure mock-mode simulation of the complex examples on a Lambda-sized container (p50/p95 over 100 cases)
 - Use the result to fix the synchronous-suite cutoff

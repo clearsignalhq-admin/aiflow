@@ -19,6 +19,14 @@ class Settings(BaseSettings):
     # Request body size limit in bytes (413 above this)
     max_request_bytes: int = 1_000_000
 
+    # Request time budget. API Gateway HTTP APIs cut a request at 30 s, so every guard must be shorter,
+    # otherwise the client sees a generic 503 while the Lambda keeps running (and spending LLM money).
+    request_budget_seconds: float = 28.0       # total for one request
+    simulation_timeout_seconds: float = 25.0   # simulate / resume
+    llm_timeout_seconds: float = 25.0          # generate / chat
+    min_llm_evaluation_seconds: float = 3.0    # below this, skip the LLM evaluation and use the mock one
+    persist_reserve_seconds: float = 2.0       # kept free for saving the run
+
     # Persisted simulation runs
     max_runs_per_user: int = 50
     run_retention_days: int = 30      # 0 = keep until pushed out by max_runs_per_user

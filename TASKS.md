@@ -1,5 +1,38 @@
 # AiFlow — Current Iteration
 
+## Iteration 8 — Production Readiness (follow-ups from the Task 44 spike)
+
+Source: `docs/AiFlow - Async Suite Runs Design.md`. Full descriptions in `BACKLOG.md` (Tasks 46–50).
+
+#### Task 46 — Durable Pause/Resume `[x]`
+
+- [x] Persist the continuation with the run row (`workflow_runs.continuation`); schema.sql + `update_202611241400.sql`
+- [x] Rebuild the paused state from the database on resume (user-scoped, validated); in-memory store stays as the fast path
+- [x] pytest: pause, drop the in-memory store, resume still works (service and API level), corrupt continuations refused
+
+#### Task 47 — Atomic Usage Counter `[x]`
+
+- [x] SQL function `increment_usage(user, field, by, date)` — service role only; schema.sql + `update_202611241500.sql`
+- [x] `increment_usage` now a single RPC call; supports `by > 1`; field whitelist
+- [x] pytest incl. concurrency and migration/schema consistency
+
+#### Task 48 — Align Simulation Timeout With the Gateway `[x]`
+
+- [x] Simulate/resume guard 25 s inside a 28 s request budget; generate/chat 25 s; clear 504 messages
+- [x] LLM evaluation uses only the remaining budget, falling back to mock with a reason
+- [x] Lambda `Timeout` 60 → 30 s in `template.yaml` (needs `sam deploy`)
+
+#### Task 49 — Benchmark Mock Simulation `[x]`
+
+- [x] `backend/benchmarks/bench_simulation.py`; results recorded in the design note (worst p95 ≈ 0.33 ms/case)
+- [x] Loose regression test; synchronous-suite cutoff decided (case cap, bulk insert)
+
+#### Task 50 — Suites: Data Model, Job API, Client-Driven Executor `[ ]`
+
+- [ ] **Blocked on owner decisions** (design note §8): executor for phase 1, case caps, shared vs separate allowance, assertion/judge scope
+
+---
+
 ## Post-MVP2.5 — Hardening & Signal
 
 Source: `docs/future/2026-11-24 AiFlow - Future Directions.md` (§4 Phase 1, adjusted in §8.5). Full task descriptions are in `BACKLOG.md` (Tasks 36–45). Work in order; complete each task (including tests) before the next.

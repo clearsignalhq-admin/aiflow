@@ -53,6 +53,7 @@ class _PausedState:
     visited: set[str] = field(default_factory=set)
     kind: str = "hitl"                      # "hitl" | "condition"
     choice_targets: set[str] = field(default_factory=set)   # valid edge targets for kind == "condition"
+    condition_output: dict[str, Any] | None = None           # data to pass down the chosen branch
 
 
 _paused_store: dict[str, _PausedState] = {}
@@ -91,6 +92,80 @@ def get_paused_settings(trace_id: str) -> tuple[Workflow, SimulationSettings] | 
     if paused is None:
         return None
     return paused.workflow, paused.settings
+
+
+_PAUSE_KINDS = {"hitl", "condition"}
+_CONTINUATION_VERSION = 1
+
+
+def export_paused_state(trace_id: str) -> dict[str, Any] | None:
+    """JSON-serialisable continuation of a paused trace, or None if it is not paused here.
+
+    Stored with the persisted run so a different process can resume it (Lambda containers
+    do not share memory). The trace, workflow and settings are stored separately by the run record.
+    """
+    paused = _paused_store.get(trace_id)
+    if paused is None:
+        return None
+    return {
+        "v": _CONTINUATION_VERSION,
+        "kind": paused.kind,
+        "paused_node_id": paused.paused_node_id,
+        "queue": [[node_id, data] for node_id, data in paused.continuation_queue],
+        "visited": sorted(paused.visited),
+        "choice_targets": sorted(paused.choice_targets),
+        "condition_output": paused.condition_output,
+    }
+
+
+def restore_paused_state(
+    trace: ExecutionTrace,
+    workflow: Workflow,
+    settings: SimulationSettings,
+    continuation: Any,
+) -> bool:
+    """Rebuild a paused simulation from stored data. Returns False (and stores nothing) if it is not usable."""
+    if not isinstance(continuation, dict) or continuation.get("v") != _CONTINUATION_VERSION:
+        return False
+    if trace.status != "paused":
+        return False
+    node_ids = {n.id for n in workflow.nodes}
+    kind = continuation.get("kind")
+    paused_node_id = continuation.get("paused_node_id")
+    queue = continuation.get("queue")
+    visited = continuation.get("visited")
+    targets = continuation.get("choice_targets", [])
+    if kind not in _PAUSE_KINDS or paused_node_id not in node_ids:
+        return False
+    if not isinstance(queue, list) or not isinstance(visited, list) or not isinstance(targets, list):
+        return False
+    parsed_queue: list[tuple[str, dict[str, Any]]] = []
+    for entry in queue:
+        if not (isinstance(entry, list) and len(entry) == 2 and entry[0] in node_ids and isinstance(entry[1], dict)):
+            return False
+        parsed_queue.append((entry[0], entry[1]))
+    if not all(isinstance(v, str) and v in node_ids for v in visited):
+        return False
+    if not all(isinstance(t, str) and t in node_ids for t in targets):
+        return False
+    condition_output = continuation.get("condition_output")
+    if condition_output is not None and not isinstance(condition_output, dict):
+        return False
+    if not any(s.node_id == paused_node_id and s.status == NodeExecutionStatus.WAITING for s in trace.steps):
+        return False
+
+    _paused_store[trace.trace_id] = _PausedState(
+        trace=trace,
+        workflow=workflow,
+        settings=settings,
+        paused_node_id=paused_node_id,
+        continuation_queue=parsed_queue,
+        visited=set(visited),
+        kind=kind,
+        choice_targets=set(targets),
+        condition_output=condition_output,
+    )
+    return True
 
 
 async def resume_simulation(
@@ -145,7 +220,9 @@ async def resume_simulation(
             f"User chose branch '{chosen_label or edge_target}'."
         )
         paused.trace.pending_choice = None
-        successors = [(edge_target, waiting_step.output)]
+        # condition_output survives step-data truncation of a stored run; step.output is the fallback.
+        branch_data = paused.condition_output if paused.condition_output is not None else (waiting_step.output or {})
+        successors = [(edge_target, branch_data)]
     else:
         hitl_output: dict[str, Any] = {
             "approved": decision == "approve",
@@ -282,6 +359,7 @@ async def _run_bfs(
                     visited=visited,
                     kind="condition",
                     choice_targets={e.target for e in options},
+                    condition_output=output,
                 )
                 return trace
 

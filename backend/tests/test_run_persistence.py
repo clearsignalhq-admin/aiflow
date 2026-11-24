@@ -85,7 +85,7 @@ async def test_record_that_cannot_fit_is_not_stored():
 async def test_update_patch_contains_only_changing_columns():
     _, trace = await make_trace()
     patch_ = rp.build_run_update(trace, SimulationEvaluation(score=7, summary="s"))
-    assert set(patch_) == {"status", "step_count", "trace", "evaluation", "truncated"}
+    assert set(patch_) == {"status", "step_count", "trace", "evaluation", "truncated", "continuation"}
     assert patch_["evaluation"]["score"] == 7
 
 

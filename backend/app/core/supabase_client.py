@@ -187,37 +187,27 @@ async def bootstrap_admin(email: str) -> None:
     logger.info("bootstrap: promoted %s to approved admin", email)
 
 
-async def increment_usage(user_id: str, field: str) -> None:
-    """Upsert today's usage row and increment the given field (executions or llm_requests)."""
-    from datetime import date
-    today = date.today().isoformat()
-    url = f"{settings.supabase_url}/rest/v1/usage_tracking"
-    headers = {**_base_headers(), "Prefer": "resolution=merge-duplicates,return=minimal"}
-    payload = {
-        "user_id": user_id,
-        "date": today,
-        field: 1,
-    }
-    # Use upsert; on conflict increment via RPC instead
-    # Simpler: fetch current value, then update or insert
-    existing = await get_usage_today(user_id)
-    current = existing.get(field, 0)
+USAGE_FIELDS = ("executions", "llm_requests")
 
-    if "id" in existing:
-        patch_url = f"{settings.supabase_url}/rest/v1/usage_tracking"
-        params = {"user_id": f"eq.{user_id}", "date": f"eq.{today}"}
-        async with httpx.AsyncClient() as client:
-            resp = await client.patch(
-                patch_url,
-                headers=_base_headers(),
-                params=params,
-                json={field: current + 1},
-            )
-            resp.raise_for_status()
-    else:
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(url, headers=headers, json=payload)
-            resp.raise_for_status()
+
+async def increment_usage(user_id: str, field: str, by: int = 1) -> None:
+    """Atomically add ``by`` to today's counter via the ``increment_usage`` SQL function.
+
+    A single statement does the insert-or-add, so concurrent requests (and suite runs that add
+    many units at once) are all counted. The date is sent explicitly so reads (get_usage_today)
+    and writes always agree on which day a request belongs to.
+    """
+    from datetime import date
+    if field not in USAGE_FIELDS:
+        raise ValueError(f"Unknown usage field: {field!r}")
+    if by < 1:
+        raise ValueError("by must be a positive integer")
+    url = f"{settings.supabase_url}/rest/v1/rpc/increment_usage"
+    headers = {**_base_headers(), "Prefer": "return=minimal"}
+    payload = {"p_user_id": user_id, "p_field": field, "p_by": by, "p_date": date.today().isoformat()}
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(url, headers=headers, json=payload)
+        resp.raise_for_status()
 
 
 # ── Workflow runs (Task 42) ──────────────────────────────────────────────────

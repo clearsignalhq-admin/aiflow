@@ -4,7 +4,9 @@ Description: AiFlow FastAPI backend — Lambda + API Gateway
 
 Globals:
   Function:
-    Timeout: 60          # seconds; LLM calls can be slow
+    # API Gateway HTTP APIs cut requests at 30 s. A longer Lambda timeout only keeps spending after the
+    # client has already received a 503. The app's own guards (see backend/app/core/config.py) fire at ~25-28 s.
+    Timeout: 30          # seconds
     MemorySize: 512
     Runtime: python3.12
     Environment:

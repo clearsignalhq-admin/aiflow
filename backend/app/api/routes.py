@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import time
 
 from fastapi import APIRouter, HTTPException, status as http_status
 from app.schemas.requests import (
@@ -20,7 +21,9 @@ from app.services.validator import validate_workflow
 from app.services.linter import lint_workflow
 from app.schemas.lint import LintWorkflowRequest, LintWorkflowResponse
 from app.services.workflow_generator import generate_workflow, chat_workflow_service, WorkflowGenerationError
-from app.services.simulator import simulate, resume_simulation, get_paused_settings, SimulationError, InvalidResumeError
+from app.services.simulator import (
+    simulate, resume_simulation, get_paused_settings, export_paused_state, SimulationError, InvalidResumeError,
+)
 from app.services.evaluator import mock_evaluate, llm_evaluate, EvaluationError
 from app.services import run_persistence
 from app.providers.factory import get_provider
@@ -31,6 +34,68 @@ from app.models.user import UserProfile
 
 router = APIRouter(prefix="/api")
 logger = logging.getLogger(__name__)
+
+
+class _Budget:
+    """Wall-clock budget for one request (see Settings.request_budget_seconds)."""
+
+    def __init__(self, total: float):
+        self._deadline = time.monotonic() + total
+
+    def remaining(self) -> float:
+        return self._deadline - time.monotonic()
+
+
+async def _llm_call(coro):
+    """Run a provider call under the LLM timeout; a timeout becomes a clear 504."""
+    limit = settings.llm_timeout_seconds
+    try:
+        return await asyncio.wait_for(coro, timeout=limit)
+    except asyncio.TimeoutError:
+        raise HTTPException(
+            status_code=504,
+            detail=f"The AI request timed out after {limit:g}s. Please try again, or use a shorter description.",
+        )
+
+
+async def _evaluate(
+    user: UserProfile,
+    workflow,
+    trace,
+    sim_settings,
+    budget: _Budget,
+    check_limit: bool,
+):
+    """Evaluate a completed trace, within what is left of the request budget.
+
+    Mock evaluation is instant. The LLM evaluation falls back to the mock one, with the reason
+    recorded on the result, if it fails, times out, or there is no time left for it.
+    """
+    if not sim_settings.evaluate or trace.status != "complete":
+        return None
+    if sim_settings.llm_mode == LLMMode.MOCK:
+        return mock_evaluate(workflow, trace)
+
+    if check_limit:
+        await _check_llm_limit(user)
+    available = budget.remaining() - settings.persist_reserve_seconds
+    if available < settings.min_llm_evaluation_seconds:
+        evaluation = mock_evaluate(workflow, trace)
+        evaluation.fallback_reason = "LLM evaluation skipped: not enough time left in this request"
+        return evaluation
+    try:
+        provider = get_provider()
+        evaluation = await asyncio.wait_for(llm_evaluate(workflow, trace, provider), timeout=available)
+        await increment_usage(user.id, "llm_requests")
+        return evaluation
+    except asyncio.TimeoutError:
+        reason = f"LLM evaluation timed out after {available:.0f}s"
+    except (RuntimeError, EvaluationError) as exc:
+        reason = f"LLM evaluation unavailable ({exc})"
+    logger.warning("LLM evaluation fell back to mock: %s", reason)
+    evaluation = mock_evaluate(workflow, trace)
+    evaluation.fallback_reason = reason
+    return evaluation
 
 
 async def _check_llm_limit(user: UserProfile) -> None:
@@ -97,7 +162,7 @@ async def generate(request: GenerateWorkflowRequest, user: ApprovedUser):
         raise HTTPException(status_code=503, detail=str(exc))
 
     try:
-        workflow = await generate_workflow(request.description, provider)
+        workflow = await _llm_call(generate_workflow(request.description, provider))
     except WorkflowGenerationError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 
@@ -116,7 +181,7 @@ async def chat_workflow(request: WorkflowChatRequest, user: ApprovedUser):
         raise HTTPException(status_code=503, detail=str(exc))
 
     try:
-        result = await chat_workflow_service(request.messages, request.current_workflow, provider)
+        result = await _llm_call(chat_workflow_service(request.messages, request.current_workflow, provider))
     except WorkflowGenerationError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 
@@ -126,68 +191,63 @@ async def chat_workflow(request: WorkflowChatRequest, user: ApprovedUser):
 
 @router.post("/workflows/simulate", response_model=SimulateWorkflowResponse)
 async def simulate_workflow(request: SimulateWorkflowRequest, user: ApprovedUser):
+    budget = _Budget(settings.request_budget_seconds)
     await _check_execution_limit(user)
 
+    limit = min(settings.simulation_timeout_seconds, budget.remaining())
     try:
         trace = await asyncio.wait_for(
             simulate(request.workflow, request.input, request.settings),
-            timeout=120.0,
+            timeout=limit,
         )
     except asyncio.TimeoutError:
-        raise HTTPException(status_code=504, detail="Simulation timed out after 120s.")
+        raise HTTPException(
+            status_code=504,
+            detail=f"Simulation timed out after {limit:g}s. Try mock mode or a smaller workflow.",
+        )
     except SimulationError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 
     await increment_usage(user.id, "executions")
     await insert_analytics_event("workflow_simulate", user_id=user.id)
 
-    evaluation = None
-    if request.settings.evaluate and trace.status == "complete":
-        if request.settings.llm_mode == LLMMode.MOCK:
-            evaluation = mock_evaluate(request.workflow, trace)
-        else:
-            await _check_llm_limit(user)
-            try:
-                provider = get_provider()
-                evaluation = await llm_evaluate(request.workflow, trace, provider)
-                await increment_usage(user.id, "llm_requests")
-            except (RuntimeError, EvaluationError) as exc:
-                logger.warning("LLM evaluation fell back to mock: %s", exc)
-                evaluation = mock_evaluate(request.workflow, trace)
-                evaluation.fallback_reason = f"LLM evaluation unavailable ({exc})"
+    evaluation = await _evaluate(user, request.workflow, trace, request.settings, budget, check_limit=True)
 
     run_id = await run_persistence.persist_run(
         user.id, request.workflow, request.input, request.settings, trace, evaluation,
+        continuation=export_paused_state(trace.trace_id) if trace.status == "paused" else None,
     )
     return SimulateWorkflowResponse(trace=trace, evaluation=evaluation, run_id=run_id)
 
 
 @router.post("/workflows/simulate/resume", response_model=SimulateWorkflowResponse)
 async def resume_simulation_endpoint(request: ResumeSimulationRequest, user: ApprovedUser):
+    budget = _Budget(settings.request_budget_seconds)
+    if get_paused_settings(request.trace_id) is None:
+        # Not in this process (e.g. another Lambda container paused it): rebuild from the stored run.
+        await run_persistence.load_paused(user.id, request.trace_id)
     paused_info = get_paused_settings(request.trace_id)
 
+    limit = min(settings.simulation_timeout_seconds, budget.remaining())
     try:
-        trace = await resume_simulation(request.trace_id, request.node_id, request.decision, request.edge_target)
+        trace = await asyncio.wait_for(
+            resume_simulation(request.trace_id, request.node_id, request.decision, request.edge_target),
+            timeout=limit,
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail=f"Resuming timed out after {limit:g}s. Try mock mode or a smaller workflow.")
     except InvalidResumeError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
     except SimulationError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
 
     evaluation = None
-    if paused_info and trace.status == "complete":
+    if paused_info:
         resume_workflow, resume_settings = paused_info
-        if resume_settings.evaluate:
-            if resume_settings.llm_mode == LLMMode.MOCK:
-                evaluation = mock_evaluate(resume_workflow, trace)
-            else:
-                try:
-                    provider = get_provider()
-                    evaluation = await llm_evaluate(resume_workflow, trace, provider)
-                    await increment_usage(user.id, "llm_requests")
-                except (RuntimeError, EvaluationError) as exc:
-                    logger.warning("LLM evaluation fell back to mock: %s", exc)
-                    evaluation = mock_evaluate(resume_workflow, trace)
-                    evaluation.fallback_reason = f"LLM evaluation unavailable ({exc})"
+        evaluation = await _evaluate(user, resume_workflow, trace, resume_settings, budget, check_limit=False)
 
-    stored = await run_persistence.update_run(user.id, trace, evaluation)
+    stored = await run_persistence.update_run(
+        user.id, trace, evaluation,
+        continuation=export_paused_state(trace.trace_id) if trace.status == "paused" else None,
+    )
     return SimulateWorkflowResponse(trace=trace, evaluation=evaluation, run_id=trace.trace_id if stored else None)
