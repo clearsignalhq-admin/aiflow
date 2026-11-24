@@ -135,3 +135,71 @@ export interface SuiteRunSummary {
   created_at: string;
   finished_at?: string | null;
 }
+
+// ── Comparing two runs ───────────────────────────────────────────────────────
+
+export type CaseChange = 'regressed' | 'fixed' | 'still_failing' | 'unchanged' | 'added' | 'removed' | 'incomplete';
+
+export interface AssertionChange {
+  label: string;
+  type: string;
+  base_passed: boolean | null;
+  head_passed: boolean | null;
+  base_message?: string | null;
+  head_message?: string | null;
+}
+
+export interface CaseComparison {
+  case_id: string;
+  case_name: string;
+  change: CaseChange;
+  base_status: string | null;
+  head_status: string | null;
+  definition_changed: boolean;
+  path_changed: boolean;
+  nodes_added: string[];
+  nodes_removed: string[];
+  output_changed: boolean;
+  assertion_changes: AssertionChange[];
+  base_error?: string | null;
+  head_error?: string | null;
+  duration_delta_ms: number | null;
+  llm_calls_delta: number | null;
+}
+
+export interface FieldChange { field: string; before: unknown; after: unknown }
+export interface NodeChange { node_id: string; name: string; change: 'added' | 'removed' | 'modified'; fields: FieldChange[] }
+export interface EdgeChange { source: string; target: string; source_name: string; target_name: string; label: string | null; change: 'added' | 'removed' }
+
+export interface RunSide {
+  id: string;
+  created_at: string;
+  status: string;
+  llm_mode: LlmMode;
+  seed: number;
+  case_count: number;
+  completed: number;
+  passed: number;
+  failed: number;
+  errors: number;
+  pass_rate: number | null;
+  llm_calls: number;
+  total_duration_ms: number;
+}
+
+export interface RunComparison {
+  base: RunSide;
+  head: RunSide;
+  verdict: 'regression' | 'improvement' | 'no_change';
+  summary: {
+    regressed: number; fixed: number; still_failing: number; unchanged: number;
+    added: number; removed: number; incomplete: number; pass_rate_delta: number | null;
+  };
+  cases: CaseComparison[];
+  workflow: { nodes: NodeChange[]; edges: EdgeChange[]; changed: boolean };
+  coverage: {
+    nodes_newly_visited: string[]; nodes_no_longer_visited: string[];
+    edges_newly_taken: string[]; edges_no_longer_taken: string[];
+  };
+  warnings: string[];
+}

@@ -125,12 +125,12 @@ Open **http://localhost:5173**.
 ## Running Tests
 
 ```bash
-# Backend (662 tests)
+# Backend (693 tests)
 cd backend
 .venv/Scripts/pytest -v       # Windows
 pytest -v                     # macOS / Linux
 
-# Frontend unit tests (358 tests)
+# Frontend unit tests (372 tests)
 cd frontend
 npm test
 
@@ -265,6 +265,7 @@ Click **Tests** in the toolbar to define test cases for the current workflow and
 - **Report:** pass rate, per-case results with the reason each check failed, which nodes no case executed, which branches were never taken, and which nodes failures involve. Previous runs (the newest 20 per suite) can be reopened
 - **Limits:** up to 50 cases per suite (10 for demo accounts) and 20 suites per user. Each case counts as one simulation toward your daily allowance, and a run that would exceed it is refused up front.
 - **Real-model runs:** choose *Real model* to run the cases against the actual AI model instead of simulated answers. Before you run, the dialog shows the most model calls and rough cost the run could use, and how many AI requests you have left today; it asks you to confirm. Each model call a case makes counts against your daily AI request allowance (a timed-out case is charged the most it could have used), at most 20 cases per real run, and answers can differ between runs, so checks on model output are less exact than with the simulator. A pinned *Mock output* on an AI step is ignored in real mode A run is tied to the workflow it was created for (matched by workflow id) and uses a snapshot of both the workflow and the cases, so editing them mid-run changes nothing
+- **Compare runs:** open any previous run, pick another run of the same suite under *Compare with* (the run just before it is preselected) and press **Compare**. You get a verdict (regression, improvement or no change) with the pass-rate movement, then each test case classified as **regressed**, **fixed**, **still failing**, **unchanged**, new, removed or not run in both. For cases that ran in both: which checks flipped (with the reason), which steps now run or no longer run, and whether the output, cost or model calls changed. A **workflow diff** shows what was added, removed or edited between the two runs (including changed settings such as a prompt or an expression), so a regression can be traced to an edit, plus coverage movement. Warnings flag runs that are not directly comparable: one real and one simulated, different seeds, edited test cases, unfinished runs, or ordinary variation between two real-model runs. Comparing in the other direction turns a regression into an improvement
 - Requires the suite tables: apply `supabase/update_202611241600.sql`, then `update_202611241700.sql` for real-model runs (both already in `supabase/schema.sql` for new projects)
 
 #### Explain this workflow

@@ -601,6 +601,12 @@ Plain Python and MCP done. **OpenAI Agents SDK not done:** needs a design for ma
 
 ---
 
+### Task 58 — Compare Suite Runs `[x]`
+
+Future Directions B5. Done for two runs of the same suite. **Follow-ups (not scheduled):** compare across two *saved workflow versions* (needs Cloud workflows and versioning); compare a run against a baseline you mark; trend chart of pass rate across runs; prompt/model A/B (B6) on top of this.
+
+---
+
 ## Future Enhancements — Polish & Operations
 
 ### Custom SMTP + Branded Email Templates + Auth Rate Limits

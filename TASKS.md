@@ -1,5 +1,19 @@
 # AiFlow — Current Iteration
 
+## Iteration 11 — Run Comparison and Regression
+
+Source: `docs/future/2026-11-24 AiFlow - Future Directions.md` (B5).
+
+#### Task 58 — Compare Suite Runs `[x]`
+
+- [x] `services/run_comparison.py`: per-case classification (regressed / fixed / still failing / unchanged / added / removed / incomplete), flipped checks, path and output changes, cost and model-call deltas, coverage movement
+- [x] Workflow diff between the two stored snapshots (steps added, removed, edited with before/after values; edges); detection of edited test cases
+- [x] Warnings for runs that are not directly comparable (mode, seed, edited cases, unfinished runs, real-model variation) and for regressions nothing explains
+- [x] `GET /api/suite-runs/compare?base=&head=` (user-scoped, same suite only) and a **Compare with** control with a report in the suite dialog
+- [x] Tests: 31 backend (including an end-to-end edit → regression → explained-by-diff) and 14 frontend
+
+---
+
 ## Iteration 10 — Real Integrations, Real-Model Suites, More Formats, Import
 
 Source: the follow-ups listed after Tasks 51–53 (`BACKLOG.md`).

@@ -23,6 +23,7 @@ from app.schemas.suites import (
     CaseRef,
     CaseResult,
     CreateSuiteRunRequest,
+    RunComparison,
     RunEstimate,
     SuiteCase,
     SuiteDetail,
@@ -34,6 +35,7 @@ from app.schemas.suites import (
     SuiteWrite,
 )
 from app.services.simulator import SimulationError, validate_for_simulation
+from app.services.run_comparison import compare_runs
 from app.services.suite_runner import build_report, llm_use_per_case, run_case
 
 router = APIRouter(prefix="/api")
@@ -314,6 +316,20 @@ async def list_suite_runs(suite_id: str, user: ApprovedUser, limit: int = Query(
             created_at=r["created_at"], finished_at=r.get("finished_at"),
         ))
     return SuiteRunList(runs=runs)
+
+
+@router.get("/suite-runs/compare", response_model=RunComparison)
+async def compare_suite_runs(user: ApprovedUser, base: str = Query(max_length=64), head: str = Query(max_length=64)):
+    """What changed between two runs of the same suite. ``base`` is the earlier run, ``head`` the one being examined."""
+    if base == head:
+        raise HTTPException(status_code=422, detail="Choose two different runs to compare.")
+    base_run = await _owned_run(user, base)
+    head_run = await _owned_run(user, head)
+    if base_run["suite_id"] != head_run["suite_id"]:
+        raise HTTPException(status_code=422, detail="These runs belong to different suites, so their test cases cannot be compared.")
+    base_results = await db.list_case_results(user.id, base_run["id"])
+    head_results = await db.list_case_results(user.id, head_run["id"])
+    return compare_runs(base_run, head_run, base_results, head_results)
 
 
 @router.get("/suite-runs/{run_id}", response_model=SuiteRunDetail)

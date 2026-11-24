@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Workflow } from '../../../models/workflow';
-import type { LlmMode, RunEstimate, SuiteRunDetail, SuiteRunSummary, SuiteSummary } from '../../../models/suites';
+import type { LlmMode, RunComparison as Comparison, RunEstimate, SuiteRunDetail, SuiteRunSummary, SuiteSummary } from '../../../models/suites';
 import { useAuth } from '../../../context/AuthContext';
 import { ApiError, suiteApi } from '../../../services/suites';
 import { executeSuite } from '../../../services/suiteExecutor';
 import { HelpIcon } from '../../../components/HelpIcon';
 import { SuiteCasesEditor } from './SuiteCasesEditor';
 import { SuiteReport } from './SuiteReport';
+import { RunComparison } from './RunComparison';
 import { percent } from './format';
 import { blankCase, caseProblem } from './assertionUtils';
 import { fromDraft, serializeSuite, toDraft } from './draftUtils';
@@ -42,8 +43,19 @@ export function SuiteModal({ workflow, onClose }: Props) {
   const [pastRuns, setPastRuns] = useState<SuiteRunSummary[]>([]);
   const abortRef = useRef<AbortController | null>(null);
   const [llmMode, setLlmMode] = useState<LlmMode>('mock');
+  const [compareBase, setCompareBase] = useState('');
+  const [comparison, setComparison] = useState<Comparison | null>(null);
+  const [comparing, setComparing] = useState(false);
   const [estimate, setEstimate] = useState<RunEstimate | null>(null);
   const [estimating, setEstimating] = useState(false);
+
+  const compareOptions = run ? pastRuns.filter((r) => r.id !== run.id && r.status !== 'running') : [];
+  const defaultBase = (() => {
+    if (!run) return '';
+    const older = compareOptions.filter((r) => r.created_at < run.created_at);
+    return (older[0] ?? compareOptions[0])?.id ?? '';
+  })();
+  const baseId = compareOptions.some((r) => r.id === compareBase) ? compareBase : defaultBase;
 
   const dirty = selectedId !== null && serializeSuite(name, draft) !== savedSnapshot;
   const firstProblem = draft.map((d) => caseProblem(d.data)).find((p) => p !== null) ?? null;
@@ -202,6 +214,7 @@ export function SuiteModal({ workflow, onClose }: Props) {
     }
 
     setError('');
+    setComparison(null);
     setRunning(true);
     const controller = new AbortController();
     abortRef.current = controller;
@@ -236,9 +249,24 @@ export function SuiteModal({ workflow, onClose }: Props) {
     }
   };
 
+  const handleCompare = async () => {
+    if (!run || !baseId) return;
+    setComparing(true);
+    setError('');
+    try {
+      setComparison(await suiteApi.compareRuns(token, baseId, run.id));
+    } catch (err) {
+      setComparison(null);
+      setError(message(err));
+    } finally {
+      setComparing(false);
+    }
+  };
+
   const handleViewRun = async (runId: string) => {
     try {
       setError('');
+      setComparison(null);
       setRun(await suiteApi.getRun(token, runId));
     } catch (err) {
       setError(message(err instanceof ApiError ? err : new Error('Could not load that run.')));
@@ -361,6 +389,28 @@ export function SuiteModal({ workflow, onClose }: Props) {
           )}
 
           {run && <SuiteReport run={run} nodeNames={nodeNames} />}
+
+          {run && run.status !== 'running' && compareOptions.length > 0 && (
+            <div className="suite-compare">
+              <label className="prop-label" htmlFor="compare-base">Compare with</label>
+              <select
+                id="compare-base"
+                className="prop-input prop-select"
+                value={baseId}
+                disabled={comparing || running}
+                onChange={(e) => { setCompareBase(e.target.value); setComparison(null); }}
+              >
+                {compareOptions.map((r) => {
+                  const done = r.passed + r.failed + r.errors;
+                  return <option key={r.id} value={r.id}>{new Date(r.created_at).toLocaleString()} — {percent(done ? r.passed / done : null)} passed ({r.passed}/{r.case_count})</option>;
+                })}
+              </select>
+              <button className="btn btn-ghost" onClick={() => void handleCompare()} disabled={comparing || running || !baseId}>
+                {comparing ? <><span className="spinner" /> Comparing…</> : 'Compare'}
+              </button>
+            </div>
+          )}
+          {comparison && <RunComparison comparison={comparison} nodeNames={nodeNames} />}
 
           {pastRuns.length > 0 && (
             <div className="suite-history">

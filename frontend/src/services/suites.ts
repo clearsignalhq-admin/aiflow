@@ -2,7 +2,7 @@ import { API_BASE } from '../config';
 import { formatApiError } from '../utils/apiError';
 import type { Workflow } from '../models/workflow';
 import type {
-  CaseResult, LlmMode, RunEstimate, SuiteCase, SuiteDetail, SuiteRunDetail, SuiteRunSummary, SuiteSummary,
+  CaseResult, LlmMode, RunComparison, RunEstimate, SuiteCase, SuiteDetail, SuiteRunDetail, SuiteRunSummary, SuiteSummary,
 } from '../models/suites';
 
 export class ApiError extends Error {
@@ -60,6 +60,9 @@ export const suiteApi = {
 
   cancelRun: (token: string | undefined, runId: string) =>
     call<SuiteRunDetail>(token, `/suite-runs/${runId}/cancel`, { method: 'POST' }),
+
+  compareRuns: (token: string | undefined, baseId: string, headId: string) =>
+    call<RunComparison>(token, `/suite-runs/compare?base=${encodeURIComponent(baseId)}&head=${encodeURIComponent(headId)}`),
 
   listRuns: (token: string | undefined, suiteId: string) =>
     call<{ runs: SuiteRunSummary[] }>(token, `/suites/${suiteId}/runs?limit=10`).then((r) => r.runs),

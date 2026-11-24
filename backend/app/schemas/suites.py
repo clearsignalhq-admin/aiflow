@@ -183,3 +183,108 @@ class SuiteRunDetail(BaseModel):
 class SuiteRunList(BaseModel):
     runs: list[SuiteRunSummary]
 
+
+
+# ── Comparing two runs (Task 58) ─────────────────────────────────────────────
+
+CaseChange = Literal["regressed", "fixed", "still_failing", "unchanged", "added", "removed", "incomplete"]
+
+
+class AssertionChange(BaseModel):
+    label: str
+    type: str
+    base_passed: Optional[bool] = None
+    head_passed: Optional[bool] = None
+    base_message: Optional[str] = None
+    head_message: Optional[str] = None
+
+
+class CaseComparison(BaseModel):
+    case_id: str
+    case_name: str
+    change: CaseChange
+    base_status: Optional[str] = None
+    head_status: Optional[str] = None
+    definition_changed: bool = False           # the case itself (input, checks, seed) was edited between the runs
+    path_changed: bool = False
+    nodes_added: list[str] = Field(default_factory=list)       # executed now, not before
+    nodes_removed: list[str] = Field(default_factory=list)     # executed before, not now
+    output_changed: bool = False
+    assertion_changes: list[AssertionChange] = Field(default_factory=list)
+    base_error: Optional[str] = None
+    head_error: Optional[str] = None
+    duration_delta_ms: Optional[int] = None
+    llm_calls_delta: Optional[int] = None
+
+
+class FieldChange(BaseModel):
+    field: str
+    before: Any = None
+    after: Any = None
+
+
+class NodeChange(BaseModel):
+    node_id: str
+    name: str
+    change: Literal["added", "removed", "modified"]
+    fields: list[FieldChange] = Field(default_factory=list)
+
+
+class EdgeChange(BaseModel):
+    source: str
+    target: str
+    source_name: str
+    target_name: str
+    label: Optional[str] = None
+    change: Literal["added", "removed"]
+
+
+class WorkflowDiff(BaseModel):
+    nodes: list[NodeChange] = Field(default_factory=list)
+    edges: list[EdgeChange] = Field(default_factory=list)
+    changed: bool = False
+
+
+class CoverageChange(BaseModel):
+    nodes_newly_visited: list[str] = Field(default_factory=list)
+    nodes_no_longer_visited: list[str] = Field(default_factory=list)
+    edges_newly_taken: list[str] = Field(default_factory=list)
+    edges_no_longer_taken: list[str] = Field(default_factory=list)
+
+
+class RunSide(BaseModel):
+    id: str
+    created_at: str
+    status: str
+    llm_mode: Literal["mock", "real"] = "mock"
+    seed: int
+    case_count: int
+    completed: int
+    passed: int
+    failed: int
+    errors: int
+    pass_rate: Optional[float] = None
+    llm_calls: int = 0
+    total_duration_ms: int = 0
+
+
+class ComparisonSummary(BaseModel):
+    regressed: int = 0
+    fixed: int = 0
+    still_failing: int = 0
+    unchanged: int = 0
+    added: int = 0
+    removed: int = 0
+    incomplete: int = 0
+    pass_rate_delta: Optional[float] = None    # head minus base, as a fraction (0.2 = +20 points)
+
+
+class RunComparison(BaseModel):
+    base: RunSide
+    head: RunSide
+    verdict: Literal["regression", "improvement", "no_change"]
+    summary: ComparisonSummary
+    cases: list[CaseComparison]
+    workflow: WorkflowDiff
+    coverage: CoverageChange
+    warnings: list[str] = Field(default_factory=list)
