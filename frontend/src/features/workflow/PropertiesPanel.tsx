@@ -2,6 +2,8 @@ import type { Workflow, WorkflowEdge } from '../../models/workflow';
 import { getNodeDefinition } from './nodes/nodeDefinitions';
 import type { ConfigField } from './nodes/nodeDefinitions';
 import { HelpIcon } from '../../components/HelpIcon';
+import { JsonField } from './JsonField';
+import { NodeType } from '../../models/workflow';
 
 interface Props {
   workflow: Workflow;
@@ -9,10 +11,11 @@ interface Props {
   selectedEdgeId: string | null;
   onNameChange: (nodeId: string, name: string) => void;
   onConfigChange: (nodeId: string, key: string, value: unknown) => void;
+  onSchemaChange?: (nodeId: string, key: 'input_schema' | 'output_schema', value: Record<string, unknown> | undefined) => void;
   onEdgeChange: (source: string, target: string, updates: { condition?: string; notes?: string }) => void;
 }
 
-export function PropertiesPanel({ workflow, selectedNodeId, selectedEdgeId, onNameChange, onConfigChange, onEdgeChange }: Props) {
+export function PropertiesPanel({ workflow, selectedNodeId, selectedEdgeId, onNameChange, onConfigChange, onSchemaChange, onEdgeChange }: Props) {
   const node = selectedNodeId ? workflow.nodes.find((n) => n.id === selectedNodeId) : null;
 
   // Resolve selected edge from domain model using the stable RF edge ID format
@@ -115,6 +118,56 @@ export function PropertiesPanel({ workflow, selectedNodeId, selectedEdgeId, onNa
               />
             </div>
           ))}
+        </>
+      )}
+
+      {onSchemaChange && node.type !== NodeType.START && node.type !== NodeType.END && node.type !== NodeType.CONDITION && (
+        <>
+          <div className="properties-section-title">
+            Data contract
+            <HelpIcon
+              title="Data Contract"
+              body="Optional JSON Schemas describing the data this node receives and produces, e.g. {&quot;type&quot;: &quot;object&quot;, &quot;properties&quot;: {&quot;tier&quot;: {&quot;type&quot;: &quot;string&quot;, &quot;enum&quot;: [&quot;basic&quot;, &quot;premium&quot;]}}}.\n\nValidate checks that connected nodes agree. During simulation, a node with an output schema produces mock data that matches it (reproducible per seed), so Condition expressions take real branches.\n\nSupported keywords: type, properties, required, items, enum, const, default, example, minimum, maximum, minItems, maxItems."
+            />
+          </div>
+          <div className="prop-group">
+            <label className="prop-label">Input schema</label>
+            <JsonField
+              key={`${node.id}-in`}
+              value={node.input_schema}
+              placeholder='{ "type": "object", "properties": { } }'
+              ariaLabel="Input schema"
+              onCommit={(v) => onSchemaChange(node.id, 'input_schema', v)}
+            />
+          </div>
+          <div className="prop-group">
+            <label className="prop-label">Output schema</label>
+            <JsonField
+              key={`${node.id}-out`}
+              value={node.output_schema}
+              placeholder='{ "type": "object", "properties": { } }'
+              ariaLabel="Output schema"
+              onCommit={(v) => onSchemaChange(node.id, 'output_schema', v)}
+            />
+          </div>
+          {node.type !== NodeType.HITL && (
+            <div className="prop-group">
+              <label className="prop-label">
+                Mock output (pinned)
+                <HelpIcon
+                  title="Pinned Mock Output"
+                  body="A fixed output used by the simulator for this node instead of generated data. It takes priority over the output schema. Leave empty to use the schema or the default mock. Ignored when the LLM runs in real mode."
+                />
+              </label>
+              <JsonField
+                key={`${node.id}-mock`}
+                value={(node.config as Record<string, unknown>).mock_output as Record<string, unknown> | undefined}
+                placeholder='{ "tier": "premium" }'
+                ariaLabel="Mock output"
+                onCommit={(v) => onConfigChange(node.id, 'mock_output', v)}
+              />
+            </div>
+          )}
         </>
       )}
     </aside>

@@ -5,6 +5,7 @@ export interface RFNodeData extends Record<string, unknown> {
   nodeType: NodeType;
   label: string;
   executionStatus?: string;
+  lint?: { severity: 'error' | 'warning' | 'info'; count: number; title: string };
 }
 
 export type WorkflowRFNode = RFNode<RFNodeData, 'workflowNode'>;
@@ -235,5 +236,23 @@ export function updateNodeConfig(
     nodes: workflow.nodes.map((n) =>
       n.id === nodeId ? { ...n, config: { ...n.config, [key]: value } } : n,
     ),
+  };
+}
+
+/** Sets (or, when value is undefined, removes) a node's input/output data contract. */
+export function updateNodeSchema(
+  workflow: Workflow,
+  nodeId: string,
+  key: 'input_schema' | 'output_schema',
+  value: Record<string, unknown> | undefined,
+): Workflow {
+  return {
+    ...workflow,
+    nodes: workflow.nodes.map((n) => {
+      if (n.id !== nodeId) return n;
+      const { [key]: _removed, ...rest } = n;
+      void _removed;
+      return value === undefined ? rest : { ...rest, [key]: value };
+    }),
   };
 }

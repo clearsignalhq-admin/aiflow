@@ -14,6 +14,7 @@
     {
       "id": "classify",
       "type": "LLM",
+      "output_schema": {"type": "object", "properties": {"sentiment": {"type": "string", "enum": ["positive", "negative"]}}, "required": ["sentiment"]},
       "name": "Classify Sentiment",
       "position": { "x": 350, "y": 240 },
       "config": {

@@ -25,6 +25,7 @@
     {
       "id": "normalise",
       "type": "TRANSFORM",
+      "output_schema": {"type": "object", "properties": {"amount_usd": {"type": "number", "minimum": 100, "maximum": 20000}}, "required": ["amount_usd"]},
       "name": "Normalise Invoice",
       "position": { "x": 400, "y": 400 },
       "config": {

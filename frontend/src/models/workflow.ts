@@ -76,12 +76,17 @@ export type NodeConfig =
   | TransformConfig
   | Record<string, unknown>;
 
+/** JSON-Schema subset describing a node's data contract (see backend services/schema_utils.py). */
+export type JsonSchema = Record<string, unknown>;
+
 export interface WorkflowNode {
   id: string;
   type: NodeType;
   name: string;
   position: Position;
   config: NodeConfig;
+  input_schema?: JsonSchema;
+  output_schema?: JsonSchema;
 }
 
 export interface WorkflowEdge {

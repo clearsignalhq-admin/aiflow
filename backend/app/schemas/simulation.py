@@ -35,6 +35,7 @@ class SimulationSettings(BaseModel):
     display_mode: DisplayMode = DisplayMode.ANIMATED
     animation_delay_ms: int = 600
     evaluate: bool = False
+    seed: int = 0   # seeds schema-generated mock data so runs are reproducible
 
 
 class NodeExecutionStatus(str, Enum):

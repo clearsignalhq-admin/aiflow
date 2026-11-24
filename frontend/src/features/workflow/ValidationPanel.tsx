@@ -1,4 +1,6 @@
 import { HelpIcon } from '../../components/HelpIcon';
+import type { LintResult } from '../../models/lint';
+import { summariseEstimates } from './lintUtils';
 
 interface ValidationResult {
   valid: boolean;
@@ -8,10 +10,14 @@ interface ValidationResult {
 
 interface Props {
   result: ValidationResult;
+  lint?: LintResult | null;
+  onSelectNode?: (nodeId: string) => void;
   onDismiss: () => void;
 }
 
-export function ValidationPanel({ result, onDismiss }: Props) {
+const SEVERITY_ICON = { error: '✗', warning: '⚠', info: 'ⓘ' } as const;
+
+export function ValidationPanel({ result, lint, onSelectNode, onDismiss }: Props) {
   const { valid, errors, warnings } = result;
 
   return (
@@ -46,6 +52,41 @@ export function ValidationPanel({ result, onDismiss }: Props) {
             <li key={i}>{w}</li>
           ))}
         </ul>
+      )}
+
+      {lint && lint.findings.length > 0 && (
+        <div className="validation-lint">
+          <div className="validation-lint-title">
+            Design findings ({lint.findings.length})
+            <HelpIcon
+              title="Design Findings"
+              body="Deterministic checks that go beyond structure: unreachable nodes, dead ends, decisions without two branches, API/database calls with no failure branch, human review placed after an irreversible step, fields that nothing upstream produces, and cycles.\n\nClick a finding to select the node. A badge on the node shows how many findings it has."
+            />
+          </div>
+          <ul className="validation-list validation-lint-list">
+            {lint.findings.map((f, i) => (
+              <li key={i} className={`validation-lint-item validation-lint-item--${f.severity}`}>
+                <button
+                  className="validation-lint-button"
+                  disabled={!f.node_id || !onSelectNode}
+                  onClick={() => f.node_id && onSelectNode?.(f.node_id)}
+                  title={f.node_id ? 'Select this node' : undefined}
+                >
+                  <span className="validation-lint-icon">{SEVERITY_ICON[f.severity]}</span>
+                  <span>
+                    {f.message}
+                    {f.fix_hint && <span className="validation-lint-hint"> — {f.fix_hint}</span>}
+                    <span className="validation-lint-rule"> [{f.rule_id}]</span>
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {lint && summariseEstimates(lint.estimates) && (
+        <div className="validation-estimate">{summariseEstimates(lint.estimates)}</div>
       )}
     </div>
   );

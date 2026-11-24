@@ -1,6 +1,8 @@
 import { useState, useRef, useCallback, useEffect, useLayoutEffect, useMemo } from 'react';
 import type { Workflow, WorkflowNode } from './models/workflow';
 import type { ExecutionTrace, SimulationEvaluation, SimulationSettings } from './models/simulation';
+import type { LintResult } from './models/lint';
+import { lintBadges } from './features/workflow/lintUtils';
 import { useWorkflowHistory } from './hooks/useWorkflowHistory';
 import { Toolbar } from './components/Toolbar';
 import { ErrorToast } from './components/ErrorToast';
@@ -24,6 +26,7 @@ import {
 import {
   updateNodeName,
   updateNodeConfig,
+  updateNodeSchema,
   updateEdge,
   autoLayoutWorkflow,
 } from './features/workflow/WorkflowAdapter';
@@ -50,6 +53,7 @@ export default function WorkflowApp() {
   // can derive staleness without a setState-in-effect.
   const [validationState, setValidationState] = useState<{
     result: ValidationResult;
+    lint: LintResult | null;
     nodeCount: number;
     edgeCount: number;
   } | null>(null);
@@ -57,6 +61,11 @@ export default function WorkflowApp() {
     validationState.nodeCount === workflow.nodes.length &&
     validationState.edgeCount === workflow.edges.length
     ? validationState.result : null;
+  const lintResult = validationResult && validationState ? validationState.lint : null;
+  const nodeLintBadges = useMemo(
+    () => (lintResult ? lintBadges(lintResult.findings) : undefined),
+    [lintResult],
+  );
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [isValidating, setIsValidating] = useState(false);
   const [showGenerateModal, setShowGenerateModal] = useState(false);
@@ -255,18 +264,22 @@ export default function WorkflowApp() {
   const handleValidate = useCallback(async () => {
     setIsValidating(true);
     try {
-      const res = await fetch(`${API_BASE}/api/workflows/validate`, {
+      const body = JSON.stringify({ workflow: workflowRef.current });
+      const post = (path: string) => fetch(`${API_BASE}/api/workflows/${path}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workflow: workflowRef.current }),
+        body,
       });
+      // Lint is advisory: a lint failure must never block validation.
+      const [res, lintRes] = await Promise.all([post('validate'), post('lint').catch(() => null)]);
       if (!res.ok) {
         const errBody = await res.json().catch(() => null) as unknown;
         showError(formatApiError(errBody, res.status));
         return;
       }
       const data = await res.json() as ValidationResult;
-      setValidationState({ result: data, nodeCount: workflowRef.current.nodes.length, edgeCount: workflowRef.current.edges.length });
+      const lint = lintRes && lintRes.ok ? await lintRes.json() as LintResult : null;
+      setValidationState({ result: data, lint, nodeCount: workflowRef.current.nodes.length, edgeCount: workflowRef.current.edges.length });
     } catch {
       showError('Could not reach backend. Is it running on port 8000?');
     } finally {
@@ -330,6 +343,14 @@ export default function WorkflowApp() {
 
   const handleConfigChange = useCallback((nodeId: string, key: string, value: unknown) => {
     setWorkflow((wf) => updateNodeConfig(wf, nodeId, key, value));
+  }, [setWorkflow]);
+
+  const handleSchemaChange = useCallback((
+    nodeId: string,
+    key: 'input_schema' | 'output_schema',
+    value: Record<string, unknown> | undefined,
+  ) => {
+    setWorkflow((wf) => updateNodeSchema(wf, nodeId, key, value));
   }, [setWorkflow]);
 
   const handleEdgeChange = useCallback((
@@ -499,6 +520,7 @@ export default function WorkflowApp() {
             onSelectNode={setSelectedNodeId}
             onSelectEdge={setSelectedEdgeId}
             nodeStatuses={simulationTrace ? nodeStatuses : undefined}
+            lintBadges={nodeLintBadges}
             traversedEdgeIds={simulationTrace ? traversedEdgeIds : null}
             autoLayoutRevision={autoLayoutRevision}
             onAutoLayout={handleAutoLayout}
@@ -506,6 +528,8 @@ export default function WorkflowApp() {
           {validationResult && (
             <ValidationPanel
               result={validationResult}
+              lint={lintResult}
+              onSelectNode={(id) => { setSelectedNodeId(id); setSelectedEdgeId(null); setRightPanelView('properties'); }}
               onDismiss={() => setValidationState(null)}
             />
           )}
@@ -537,6 +561,7 @@ export default function WorkflowApp() {
                 selectedEdgeId={selectedEdgeId}
                 onNameChange={handleNodeNameChange}
                 onConfigChange={handleConfigChange}
+                onSchemaChange={handleSchemaChange}
                 onEdgeChange={handleEdgeChange}
               />
             )}

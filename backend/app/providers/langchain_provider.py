@@ -20,7 +20,8 @@ Schema:
       "type": "<NODE_TYPE>",
       "name": "<human-readable display name>",
       "position": { "x": <number>, "y": <number> },
-      "config": { ... }
+      "config": { ... },
+      "output_schema": { "type": "object", "properties": { "<field>": { "type": "string" } } }
     }
   ],
   "edges": [
@@ -57,6 +58,10 @@ Layout rules:
   - Main path nodes: x=300, y starts at 100 and increments by 160 per level.
   - CONDITION branches: left branch x=150, right branch x=450.
   - After branches converge, resume main path at x=300.
+  - LLM, API, TOOL, RAG, DATABASE and TRANSFORM nodes SHOULD include an "output_schema" (a small JSON Schema:
+    {"type":"object","properties":{"field":{"type":"string"}},"required":["field"]}) describing the fields they
+    produce. A CONDITION must only read fields declared by the node feeding it (use enum for category fields,
+    e.g. {"complexity":{"type":"string","enum":["simple","complex"]}}). Optionally add "input_schema" the same way.
   - Edges from CONDITION nodes must include a "condition" label. The label must equal a value the expression can return
     (e.g. the strings "complex"/"simple"), or be "true"/"false" (or "yes"/"no") when the expression is a comparison.
     An edge labelled "else" is taken when no other label matches.
@@ -92,7 +97,7 @@ WORKFLOW SCHEMA:
   "id": "<uuid-v4>",
   "name": "<short workflow name>",
   "description": "<one sentence>",
-  "nodes": [{ "id": "<kebab-id>", "type": "<NODE_TYPE>", "name": "<name>", "position": { "x": 0, "y": 0 }, "config": {} }],
+  "nodes": [{ "id": "<kebab-id>", "type": "<NODE_TYPE>", "name": "<name>", "position": { "x": 0, "y": 0 }, "config": {}, "output_schema": { "type": "object", "properties": {} } }],
   "edges": [{ "source": "<id>", "target": "<id>", "condition": "<optional label>" }],
   "metadata": {}
 }

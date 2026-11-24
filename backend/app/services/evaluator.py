@@ -10,7 +10,9 @@ The route selects the path based on SimulationSettings.llm_mode:
 """
 from app.models.workflow import NodeType, Workflow
 from app.providers.base import LLMProvider
+from app.schemas.lint import LintSeverity
 from app.schemas.simulation import ExecutionTrace, SimulationEvaluation
+from app.services.linter import lint_workflow
 
 
 class EvaluationError(Exception):
@@ -74,6 +76,15 @@ def mock_evaluate(workflow: Workflow, trace: ExecutionTrace) -> SimulationEvalua
         recommendations.append(
             "Consider adding a HITL node before the final response for high-stakes decisions."
         )
+
+    # Deterministic static-analysis findings (see services/linter.py) supplement the heuristics above.
+    for finding in lint_workflow(workflow).findings:
+        if finding.severity == LintSeverity.INFO:
+            continue
+        if finding.message not in issues:
+            issues.append(finding.message)
+        if finding.fix_hint and finding.fix_hint not in recommendations:
+            recommendations.append(finding.fix_hint)
 
     # Score: base 6, +1 for HITL, +1 for CONDITION, -1 if no error handling
     score = 6

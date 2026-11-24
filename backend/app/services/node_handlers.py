@@ -13,7 +13,7 @@ import random as _random
 from typing import Any
 
 from app.models.workflow import NodeType, WorkflowNode
-from app.services import expressions
+from app.services import expressions, schema_utils
 from app.schemas.simulation import SimulationSettings, LLMMode
 
 
@@ -22,6 +22,9 @@ async def dispatch(
     input_data: dict[str, Any],
     settings: SimulationSettings,
 ) -> dict[str, Any]:
+    fixture = _fixture_output(node, settings)
+    if fixture is not None:
+        return fixture
     if node.type == NodeType.LLM:
         return await _handle_llm(node, input_data, settings)
     handlers = {
@@ -37,6 +40,36 @@ async def dispatch(
     }
     handler = handlers.get(node.type, _handle_unknown)
     return handler(node, input_data, settings)
+
+
+# ── Fixtures: pinned mock_output and schema-conformant mock data ──────────────
+
+_FIXTURE_TYPES = {
+    NodeType.LLM, NodeType.TOOL, NodeType.API, NodeType.DATABASE, NodeType.RAG, NodeType.TRANSFORM,
+}
+
+
+def _fixture_output(node: WorkflowNode, settings: SimulationSettings) -> dict[str, Any] | None:
+    """Output for nodes that declare a pinned ``config.mock_output`` or an ``output_schema``.
+
+    Precedence: mock_output (exact, as pinned) > output_schema (generated, seeded by
+    settings.seed + node id so runs are reproducible) > the handler's default mock.
+    Real-LLM mode is never overridden.
+    """
+    if node.type not in _FIXTURE_TYPES:
+        return None
+    if node.type == NodeType.LLM and settings.llm_mode == LLMMode.REAL:
+        return None
+
+    pinned = node.config.get("mock_output")
+    if pinned not in (None, "", {}):
+        return pinned if isinstance(pinned, dict) else {"result": pinned}
+
+    if node.output_schema and not schema_utils.check_schema(node.output_schema):
+        rng = _random.Random(f"{settings.seed}:{node.id}")
+        value = schema_utils.generate(node.output_schema, rng, node.name)
+        return value if isinstance(value, dict) else {"result": value}
+    return None
 
 
 # ── Handlers ─────────────────────────────────────────────────────────────────

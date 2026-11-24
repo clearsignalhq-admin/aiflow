@@ -1,4 +1,5 @@
 import { useCallback, useMemo, memo, useEffect, useState } from 'react';
+import type { LintBadge } from './lintUtils';
 import {
   ReactFlow,
   Background,
@@ -53,12 +54,13 @@ interface Props {
   onSelectNode: (nodeId: string | null) => void;
   onSelectEdge: (edgeId: string | null) => void;
   nodeStatuses?: Record<string, string>;
+  lintBadges?: Record<string, LintBadge>;
   traversedEdgeIds?: Set<string> | null;
   autoLayoutRevision?: number;
   onAutoLayout?: () => void;
 }
 
-const Canvas = memo(function Canvas({ workflow, selectedNodeId, selectedEdgeId, onWorkflowChange, onSelectNode, onSelectEdge, nodeStatuses, traversedEdgeIds, autoLayoutRevision, onAutoLayout }: Props) {
+const Canvas = memo(function Canvas({ workflow, selectedNodeId, selectedEdgeId, onWorkflowChange, onSelectNode, onSelectEdge, nodeStatuses, lintBadges, traversedEdgeIds, autoLayoutRevision, onAutoLayout }: Props) {
   const { screenToFlowPosition, addNodes, setCenter, getZoom, getNode, fitView } = useReactFlow();
   const [isInteractive, setIsInteractive] = useState(true);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
@@ -82,9 +84,9 @@ const Canvas = memo(function Canvas({ workflow, selectedNodeId, selectedEdgeId, 
       ...n,
       selected: selectedIds.has(n.id),
       hidden: hiddenNodeIds.has(n.id),
-      data: { ...n.data, executionStatus: nodeStatuses?.[n.id] },
+      data: { ...n.data, executionStatus: nodeStatuses?.[n.id], lint: lintBadges?.[n.id] },
     })),
-    [rfNodes, selectedIds, nodeStatuses, hiddenNodeIds],
+    [rfNodes, selectedIds, nodeStatuses, lintBadges, hiddenNodeIds],
   );
 
   const rfEdgesWithSelection = useMemo(

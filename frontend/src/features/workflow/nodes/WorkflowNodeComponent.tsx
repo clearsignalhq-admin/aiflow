@@ -34,8 +34,18 @@ export const WorkflowNodeComponent = memo(function WorkflowNodeComponent({ data,
         fontFamily: 'monospace',
         opacity: data.executionStatus === 'pending' ? 0.4 : 1,
         transition: 'opacity 0.3s',
+        position: 'relative',
       }}
     >
+      {data.lint && (
+        <span
+          className={`node-lint-badge node-lint-badge--${data.lint.severity}`}
+          title={data.lint.title}
+          data-testid="lint-badge"
+        >
+          {data.lint.count}
+        </span>
+      )}
       {!isStart && (
         <Handle
           type="target"

@@ -30,23 +30,23 @@ Source: `docs/future/2026-11-24 AiFlow - Future Directions.md` (§4 Phase 1, adj
 
 ### Iteration 6 — Signal
 
-#### Task 39 — Static Analysis / Lint Engine `[ ]`
+#### Task 39 — Static Analysis / Lint Engine `[x]`
 
-- [ ] Rule set with `severity`, `node_id`, `rule_id`, `fix_hint`
-- [ ] Lint endpoint + pytest per rule
-- [ ] Findings panel + node badges in UI
+- [x] Rule set with `severity`, `node_id`, `rule_id`, `fix_hint`
+- [x] Lint endpoint + pytest per rule
+- [x] Findings panel + node badges in UI
 
-#### Task 40 — Data Contracts `[ ]`
+#### Task 40 — Data Contracts `[x]`
 
-- [ ] Optional `input_schema` / `output_schema` on nodes (frontend + backend)
-- [ ] Generator fills them; validator checks edge compatibility
-- [ ] Properties panel view/edit
+- [x] Optional `input_schema` / `output_schema` on nodes (frontend + backend)
+- [x] Generator fills them; validator checks edge compatibility
+- [x] Properties panel view/edit
 
-#### Task 41 — Schema-Conformant Mock Outputs `[ ]`
+#### Task 41 — Schema-Conformant Mock Outputs `[x]`
 
-- [ ] Mock handlers conform to `output_schema` (seeded, deterministic)
-- [ ] Per-node `mock_output` override
-- [ ] CONDITION branches taken on real data
+- [x] Mock handlers conform to `output_schema` (seeded, deterministic)
+- [x] Per-node `mock_output` override
+- [x] CONDITION branches taken on real data
 
 ### Iteration 7 — Persistence and Cleanup
 

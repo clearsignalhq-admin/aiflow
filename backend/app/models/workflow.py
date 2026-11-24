@@ -47,6 +47,14 @@ class WorkflowNode(BaseModel):
     name: str = Field(max_length=MAX_NAME_LENGTH)
     position: Position = Field(default_factory=Position)
     config: dict[str, Any] = Field(default_factory=dict)
+    # Optional data contracts (JSON-Schema subset, see app/services/schema_utils.py)
+    input_schema: Optional[dict[str, Any]] = None
+    output_schema: Optional[dict[str, Any]] = None
+
+    @field_validator("input_schema", "output_schema")
+    @classmethod
+    def _schema_size(cls, v: Optional[dict[str, Any]]) -> Optional[dict[str, Any]]:
+        return None if v is None else _check_dict_size(v, "Node schema")
 
     @field_validator("config")
     @classmethod

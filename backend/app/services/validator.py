@@ -1,6 +1,6 @@
 from app.models.workflow import Workflow, NodeType
 from app.schemas.requests import ValidationResult
-from app.services import expressions
+from app.services import expressions, schema_utils
 
 # Required config keys per node type
 _REQUIRED_CONFIG: dict[NodeType, list[str]] = {
@@ -66,6 +66,7 @@ def validate_workflow(workflow: Workflow) -> ValidationResult:
             warnings.append(f"Node '{node.name}' ({node.id}) is not connected to any edge.")
 
     warnings.extend(_condition_warnings(workflow))
+    warnings.extend(_contract_warnings(workflow))
 
     return ValidationResult(valid=len(errors) == 0, errors=errors, warnings=warnings)
 
@@ -111,4 +112,29 @@ def _condition_warnings(workflow: Workflow) -> list[str]:
                 )
         for edge_label in sorted(edge_labels - produced - expressions.DEFAULT_LABELS):
             warnings.append(f"{label}: edge label '{edge_label}' can never be selected by the expression.")
+    return warnings
+
+
+def _contract_warnings(workflow: Workflow) -> list[str]:
+    """Check declared data contracts: schema shape, and compatibility across edges."""
+    warnings: list[str] = []
+    by_id = {n.id: n for n in workflow.nodes}
+
+    for node in workflow.nodes:
+        for label, schema in (("input schema", node.input_schema), ("output schema", node.output_schema)):
+            if schema is None:
+                continue
+            for problem in schema_utils.check_schema(schema, label):
+                warnings.append(f"Node '{node.name}': {problem}")
+
+    for edge in workflow.edges:
+        source, target = by_id.get(edge.source), by_id.get(edge.target)
+        if source is None or target is None:
+            continue
+        if source.output_schema is None or target.input_schema is None:
+            continue
+        if schema_utils.check_schema(source.output_schema) or schema_utils.check_schema(target.input_schema):
+            continue  # shape problems already reported
+        for problem in schema_utils.compatibility_problems(source.output_schema, target.input_schema):
+            warnings.append(f"Edge '{source.name}' → '{target.name}': {problem}.")
     return warnings

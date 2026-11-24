@@ -25,6 +25,7 @@
     {
       "id": "calc-shortfalls",
       "type": "TRANSFORM",
+      "output_schema": {"type": "object", "properties": {"shortage_severity": {"type": "string", "enum": ["low", "critical"]}}, "required": ["shortage_severity"]},
       "name": "Calculate Shortfalls",
       "position": { "x": 400, "y": 400 },
       "config": {

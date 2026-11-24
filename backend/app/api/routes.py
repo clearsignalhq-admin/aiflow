@@ -16,6 +16,8 @@ from app.schemas.simulation import (
     SimulateWorkflowResponse,
 )
 from app.services.validator import validate_workflow
+from app.services.linter import lint_workflow
+from app.schemas.lint import LintWorkflowRequest, LintWorkflowResponse
 from app.services.workflow_generator import generate_workflow, chat_workflow_service, WorkflowGenerationError
 from app.services.simulator import simulate, resume_simulation, get_paused_settings, SimulationError
 from app.services.evaluator import mock_evaluate, llm_evaluate, EvaluationError
@@ -75,6 +77,11 @@ async def validate(request: ValidateWorkflowRequest, user: ApprovedUser):
         errors=result.errors,
         warnings=result.warnings,
     )
+
+
+@router.post("/workflows/lint", response_model=LintWorkflowResponse)
+async def lint(request: LintWorkflowRequest, user: ApprovedUser):
+    return LintWorkflowResponse(**lint_workflow(request.workflow).model_dump())
 
 
 @router.post("/workflows/generate", response_model=GenerateWorkflowResponse)

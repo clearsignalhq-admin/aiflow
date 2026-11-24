@@ -25,6 +25,7 @@
     {
       "id": "assess-tier",
       "type": "LLM",
+      "output_schema": {"type": "object", "properties": {"tier": {"type": "string", "enum": ["basic", "premium"]}}, "required": ["tier"]},
       "name": "Assess Customer Tier",
       "position": { "x": 400, "y": 400 },
       "config": {

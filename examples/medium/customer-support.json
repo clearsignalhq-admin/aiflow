@@ -36,6 +36,7 @@
     {
       "id": "customer-api",
       "type": "API",
+      "output_schema": {"type": "object", "properties": {"complexity": {"type": "string", "enum": ["simple", "complex"]}}, "required": ["complexity"]},
       "name": "Customer API",
       "position": { "x": 350, "y": 560 },
       "config": {

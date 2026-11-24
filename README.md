@@ -125,12 +125,12 @@ Open **http://localhost:5173**.
 ## Running Tests
 
 ```bash
-# Backend (76 tests)
+# Backend (255 tests)
 cd backend
 .venv/Scripts/pytest -v       # Windows
 pytest -v                     # macOS / Linux
 
-# Frontend unit tests (98 tests)
+# Frontend unit tests (189 tests)
 cd frontend
 npm test
 
@@ -169,6 +169,18 @@ Click a node → edit its name and config in the right panel. Press **Delete** t
 ### Validate
 Click **Validate** → errors and warnings appear in a panel below the canvas. The button badge shows the count.
 
+Validate also runs a deterministic **design lint** (no LLM involved). Findings appear under *Design findings*; click one to select the node, and a badge on the node shows its finding count. Rules: unreachable nodes, dead ends (no path to END), decisions with fewer than two or unlabelled branches, API/database/tool calls with no failure branch, human review placed after an irreversible write (POST/PUT/PATCH/DELETE, INSERT/UPDATE/DELETE…), conditions reading fields their upstream node does not declare, `{{placeholders}}` nothing upstream produces, and cycles. The panel also shows a rough latency/cost estimate across all paths (fixed per-node-type heuristics, not measurements).
+
+#### Data contracts
+
+Nodes can declare an optional **input schema** and **output schema** (Properties panel → *Data contract*), written as JSON Schema (supported keywords: `type`, `properties`, `required`, `items`, `enum`, `const`, `default`, `example`, `minimum`, `maximum`, `minItems`, `maxItems`).
+
+- Validate warns when a schema is malformed, or when connected nodes disagree (a required input field that is not produced upstream, or a field with different types)
+- The AI generator fills in output schemas for LLM, API, TOOL, RAG, DATABASE and TRANSFORM nodes
+- During simulation, a node with an output schema produces **mock data that matches it** instead of a canned string. Values are seeded by the simulation `seed` (default 0) and the node id, so a run is reproducible and CONDITION expressions take real branches
+- **Mock output (pinned)** on a node pins an exact output instead. Precedence: pinned mock output > output schema > default mock. Real-LLM mode is never overridden
+- Schemas are optional: workflows without them behave as before
+
 ### Simulate
 
 Click **Simulate** → configure settings → click **Run Simulation**. The backend executes a mock BFS traversal of your workflow graph from `START` to `END`. Results appear in the right sidebar panel (which replaces the Properties panel for the duration of the simulation), keeping the canvas fully visible.
@@ -206,6 +218,8 @@ Every node type returns a deterministic mock output so you can explore workflows
 | `CONDITION` | Evaluates the node's `expression` and routes by edge label; if it cannot, follows all edges and records a warning on the step |
 | `HITL` | `{ approved: true, reviewer: "auto" }` (auto-approve) or suspends (pause mode) |
 | `TRANSFORM` | Returns input data unchanged |
+
+Any node of type LLM, TOOL, API, DATABASE, RAG or TRANSFORM that declares an output schema or a pinned mock output uses that instead (see *Data contracts*).
 
 #### CONDITION expressions
 

@@ -2477,3 +2477,36 @@ body {
   transition: background 0.15s, color 0.15s;
 }
 .ua-signout:hover { background: var(--bg-raised); color: #f87171; }
+
+/* ── Lint findings (Validate panel + node badges) ─────────────────── */
+.validation-lint { margin-top: 8px; }
+.validation-lint-title { font-weight: 700; font-size: 12px; margin-bottom: 4px; }
+.validation-lint-list { list-style: none; padding-left: 0; margin: 0; }
+.validation-lint-button {
+  display: flex; gap: 6px; align-items: flex-start; width: 100%;
+  background: none; border: none; padding: 3px 4px; text-align: left;
+  color: inherit; font: inherit; cursor: pointer; border-radius: 4px;
+}
+.validation-lint-button:hover:not(:disabled) { background: var(--bg-hover, rgba(255, 255, 255, 0.06)); }
+.validation-lint-button:disabled { cursor: default; }
+.validation-lint-icon { flex-shrink: 0; }
+.validation-lint-item--error .validation-lint-icon { color: #f87171; }
+.validation-lint-item--warning .validation-lint-icon { color: #f59e0b; }
+.validation-lint-item--info .validation-lint-icon { color: #60a5fa; }
+.validation-lint-hint { opacity: 0.75; }
+.validation-lint-rule { opacity: 0.45; font-size: 10px; }
+.validation-estimate { margin-top: 8px; font-size: 11px; opacity: 0.7; }
+
+.node-lint-badge {
+  position: absolute; top: -8px; right: -8px;
+  min-width: 18px; height: 18px; padding: 0 4px; box-sizing: border-box;
+  border-radius: 9px; font-size: 10px; font-weight: 700; line-height: 18px; text-align: center;
+  color: #111; border: 2px solid var(--bg-surface, #1e1e1e); pointer-events: auto;
+}
+.node-lint-badge--error { background: #f87171; }
+.node-lint-badge--warning { background: #f59e0b; }
+.node-lint-badge--info { background: #60a5fa; }
+
+.prop-json { font-family: monospace; font-size: 11px; min-height: 64px; }
+.prop-json--invalid { border-color: #f87171; }
+.prop-json-error { color: #f87171; font-size: 11px; margin-top: 3px; }

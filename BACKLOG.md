@@ -477,7 +477,7 @@ No limits exist on `Workflow.nodes`, `edges`, or node `config` (§8.3 #1).
 - Clear 413/422 error messages surfaced in the UI
 - pytest for each limit; frontend import also rejects oversized files
 
-### Task 39 — Static Analysis / Lint Engine `[ ]`
+### Task 39 — Static Analysis / Lint Engine `[x]`
 
 Deterministic rules richer than the validator (A2). Replaces hardcoded text in `mock_evaluate`.
 
@@ -486,7 +486,7 @@ Deterministic rules richer than the validator (A2). Replaces hardcoded text in `
 - `POST /api/workflows/lint` (or extend validate) + pytest per rule
 - UI: findings listed in a panel and shown as badges on nodes; click focuses the node
 
-### Task 40 — Data Contracts `[ ]`
+### Task 40 — Data Contracts `[x]`
 
 Optional `input_schema` / `output_schema` (JSON Schema) on nodes (A3).
 
@@ -495,7 +495,7 @@ Optional `input_schema` / `output_schema` (JSON Schema) on nodes (A3).
 - Properties panel can view/edit them
 - Frontend + backend models stay in sync
 
-### Task 41 — Schema-Conformant Mock Outputs `[ ]`
+### Task 41 — Schema-Conformant Mock Outputs `[x]`
 
 Depends on Task 40 (A4).
 
