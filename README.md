@@ -125,12 +125,12 @@ Open **http://localhost:5173**.
 ## Running Tests
 
 ```bash
-# Backend (693 tests)
+# Backend (736 tests)
 cd backend
 .venv/Scripts/pytest -v       # Windows
 pytest -v                     # macOS / Linux
 
-# Frontend unit tests (372 tests)
+# Frontend unit tests (385 tests)
 cd frontend
 npm test
 
@@ -267,6 +267,15 @@ Click **Tests** in the toolbar to define test cases for the current workflow and
 - **Real-model runs:** choose *Real model* to run the cases against the actual AI model instead of simulated answers. Before you run, the dialog shows the most model calls and rough cost the run could use, and how many AI requests you have left today; it asks you to confirm. Each model call a case makes counts against your daily AI request allowance (a timed-out case is charged the most it could have used), at most 20 cases per real run, and answers can differ between runs, so checks on model output are less exact than with the simulator. A pinned *Mock output* on an AI step is ignored in real mode A run is tied to the workflow it was created for (matched by workflow id) and uses a snapshot of both the workflow and the cases, so editing them mid-run changes nothing
 - **Compare runs:** open any previous run, pick another run of the same suite under *Compare with* (the run just before it is preselected) and press **Compare**. You get a verdict (regression, improvement or no change) with the pass-rate movement, then each test case classified as **regressed**, **fixed**, **still failing**, **unchanged**, new, removed or not run in both. For cases that ran in both: which checks flipped (with the reason), which steps now run or no longer run, and whether the output, cost or model calls changed. A **workflow diff** shows what was added, removed or edited between the two runs (including changed settings such as a prompt or an expression), so a regression can be traced to an edit, plus coverage movement. Warnings flag runs that are not directly comparable: one real and one simulated, different seeds, edited test cases, unfinished runs, or ordinary variation between two real-model runs. Comparing in the other direction turns a regression into an improvement
 - Requires the suite tables: apply `supabase/update_202611241600.sql`, then `update_202611241700.sql` for real-model runs (both already in `supabase/schema.sql` for new projects)
+
+#### Suggested changes
+
+**Suggest** (toolbar) offers edits you can accept one at a time:
+
+- **Fixes for design findings** are worked out from the workflow itself, so they are free and always the same: delete an unreachable step, connect a dead end to END, label or complete a decision's branches, declare the fields a decision reads in the upstream output schema, and add a failure branch (a check plus a human review) after an API, database or tool step.
+- **Describe a change** sends your instruction and the workflow to the AI, which proposes edits (for example "add a human approval before the refund is issued"). This uses one AI request from your daily allowance.
+
+Every suggestion is a short list of typed operations (add or remove a step, change settings, connect, relabel). Nothing changes until you press **Apply**. The server checks each change against your actual workflow and applies it all together or not at all; anything the AI proposes that does not fit (a missing step, a second START, an unknown operation) is dropped and listed. Applying is a single undoable edit (Ctrl+Z). Endpoints: `POST /api/workflows/fixes`, `/suggest`, `/apply-changes`.
 
 #### Explain this workflow
 

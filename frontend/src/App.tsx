@@ -37,6 +37,7 @@ import { RunHistoryModal } from './features/workflow/RunHistoryModal';
 import { SuiteModal } from './features/workflow/suites/SuiteModal';
 import { MermaidModal } from './features/workflow/MermaidModal';
 import { ExplainModal } from './features/workflow/ExplainModal';
+import { SuggestionsModal } from './features/workflow/SuggestionsModal';
 import { ExportCodeModal } from './features/workflow/ExportCodeModal';
 import type { RunDetail } from './models/runs';
 import './index.css';
@@ -444,6 +445,13 @@ export default function WorkflowApp() {
   const [showExportCode, setShowExportCode] = useState(false);
   const handleOpenExportCode = useCallback(() => setShowExportCode(true), []);
   const handleOpenExplain = useCallback(() => setShowExplain(true), []);
+  const [showSuggest, setShowSuggest] = useState(false);
+  const handleOpenSuggest = useCallback(() => setShowSuggest(true), []);
+  const handleChangesApplied = useCallback((updated: Workflow, count: number) => {
+    setWorkflow(updated);           // one undoable edit, however many changes were applied
+    setValidationState(null);       // the old findings no longer describe this workflow
+    flash(`Applied ${count} suggested change${count === 1 ? '' : 's'}`);
+  }, [flash, setWorkflow]);
   const handleOpenMermaid = useCallback(() => setShowMermaid(true), []);
   const handleOpenSuites = useCallback(() => setShowSuites(true), []);
   const handleOpenHistory = useCallback(() => setShowRunHistory(true), []);
@@ -535,6 +543,7 @@ export default function WorkflowApp() {
         onTests={handleOpenSuites}
         onMermaid={handleOpenMermaid}
         onExplain={handleOpenExplain}
+        onSuggest={handleOpenSuggest}
         onExportCode={handleOpenExportCode}
         onGenerate={handleGenerate}
         onRefine={handleRefine}
@@ -629,6 +638,10 @@ export default function WorkflowApp() {
 
       {showExportCode && (
         <ExportCodeModal workflow={workflow} onImport={handleExampleSelected} onClose={() => setShowExportCode(false)} />
+      )}
+
+      {showSuggest && (
+        <SuggestionsModal workflow={workflow} onApply={handleChangesApplied} onClose={() => setShowSuggest(false)} />
       )}
 
       {showExplain && (

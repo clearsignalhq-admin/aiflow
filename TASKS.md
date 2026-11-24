@@ -1,5 +1,21 @@
 # AiFlow — Current Iteration
 
+## Iteration 12 — Suggested Changes
+
+Source: `docs/future/2026-11-24 AiFlow - Future Directions.md` (AI-suggested fixes).
+
+#### Task 59 — Suggested Fixes and AI-Proposed Changes `[x]`
+
+- [x] Typed edit operations (`schemas/patch.py`): add/remove/update step, add/remove/relabel connection; unknown operations and fields rejected
+- [x] `services/patching.py`: all-or-nothing application per change on a copy, guards (one START, at least one END, no edges into START or out of END, size limits), placement of new steps, plain-language descriptions
+- [x] `services/fixes.py`: deterministic fixes for unreachable steps, dead ends, single-branch and unlabelled decisions, undeclared or missing schema fields, missing failure branches; each verified to apply
+- [x] `services/change_suggester.py`: AI proposals parsed into the same operations, validated and checked against the workflow; unusable ones discarded with reasons
+- [x] `POST /api/workflows/fixes` (free), `/suggest` (one AI request, daily limit, timeout), `/apply-changes`
+- [x] **Suggest** dialog: fixes list, describe-a-change box, per-change Apply, Apply all fixes, one undo step
+- [x] Tests: 43 backend (including a failure-branch fix that still simulates) and 13 frontend
+
+---
+
 ## Iteration 11 — Run Comparison and Regression
 
 Source: `docs/future/2026-11-24 AiFlow - Future Directions.md` (B5).

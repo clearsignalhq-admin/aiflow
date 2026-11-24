@@ -22,6 +22,10 @@ from app.services.linter import lint_workflow
 from app.schemas.lint import LintWorkflowRequest, LintWorkflowResponse
 from app.schemas.explain import ExplainWorkflowRequest, ExplainWorkflowResponse
 from app.services.explainer import explain_workflow
+from app.schemas.patch import ApplyRequest, ApplyResponse, FixesRequest, FixesResponse, SuggestRequest, SuggestResponse
+from app.services.patching import apply_changes, view as view_change
+from app.services.fixes import suggest_fixes
+from app.services.change_suggester import SuggestionError, suggest_changes
 from app.services.workflow_generator import generate_workflow, chat_workflow_service, WorkflowGenerationError
 from app.services.simulator import (
     simulate, resume_simulation, get_paused_settings, export_paused_state, SimulationError, InvalidResumeError,
@@ -158,6 +162,36 @@ async def lint(request: LintWorkflowRequest, user: ApprovedUser):
 async def explain(request: ExplainWorkflowRequest, user: ApprovedUser):
     """Deterministic plain-language description (no LLM, so it costs no allowance)."""
     return ExplainWorkflowResponse(markdown=explain_workflow(request.workflow))
+
+
+@router.post("/workflows/fixes", response_model=FixesResponse)
+async def workflow_fixes(request: FixesRequest, user: ApprovedUser):
+    """Deterministic suggested fixes for what the checks flag (no LLM, so it costs no allowance)."""
+    return FixesResponse(changes=[view_change(request.workflow, c) for c in suggest_fixes(request.workflow)])
+
+
+@router.post("/workflows/suggest", response_model=SuggestResponse)
+async def workflow_suggest(request: SuggestRequest, user: ApprovedUser):
+    """Ask the AI to propose changes for an instruction. Proposals only: nothing is applied here."""
+    await _check_llm_limit(user)
+    try:
+        provider = get_provider()
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    try:
+        result = await _llm_call(suggest_changes(request.workflow, request.instruction, provider))
+    except SuggestionError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    except RuntimeError as exc:
+        raise HTTPException(status_code=502, detail=f"The AI request failed: {exc}")
+    await increment_usage(user.id, "llm_requests")
+    return result
+
+
+@router.post("/workflows/apply-changes", response_model=ApplyResponse)
+async def workflow_apply_changes(request: ApplyRequest, user: ApprovedUser):
+    """Apply accepted changes to the posted workflow and return the result. Each change is all-or-nothing."""
+    return apply_changes(request.workflow, request.changes)
 
 
 @router.post("/workflows/generate", response_model=GenerateWorkflowResponse)

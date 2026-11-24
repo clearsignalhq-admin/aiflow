@@ -607,6 +607,12 @@ Future Directions B5. Done for two runs of the same suite. **Follow-ups (not sch
 
 ---
 
+### Task 59 — Suggested Fixes and AI-Proposed Changes `[x]`
+
+Done for design findings and free-text instructions. **Follow-ups (not scheduled):** fixes for failing test cases and for run-time errors (feed the failing check and trace to the AI); a fix for human review placed after an irreversible step; preview of a change on the canvas before applying; suggested changes for imported workflows.
+
+---
+
 ## Future Enhancements — Polish & Operations
 
 ### Custom SMTP + Branded Email Templates + Auth Rate Limits
