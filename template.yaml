@@ -16,7 +16,7 @@ Globals:
         LLM_API_KEY: !Ref LLMApiKey
         LLM_MODEL: gpt-4o-mini
         LLM_BASE_URL: ""
-        CORS_ORIGINS: !Sub '["https://${FrontendOrigin}","http://localhost:5173"]'
+        CORS_ORIGINS: !Sub '["https://${FrontendOrigin}","https://aiflow.fuatyazar.com","http://localhost:5173"]'
         SUPABASE_URL: !Ref SupabaseUrl
         SUPABASE_SERVICE_ROLE_KEY: !Ref SupabaseServiceRoleKey
         SUPABASE_JWT_SECRET: !Ref SupabaseJwtSecret
