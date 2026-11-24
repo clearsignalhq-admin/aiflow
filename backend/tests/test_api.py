@@ -39,7 +39,8 @@ async def test_health():
     async with AsyncClient(transport=_transport(), base_url=BASE) as client:
         res = await client.get("/api/health")
     assert res.status_code == 200
-    assert res.json() == {"status": "ok"}
+    body = res.json()
+    assert body["status"] == "ok" and body["version"] and "commit" in body
 
 
 # ── Validate: valid workflow ────────────────────────────────────────

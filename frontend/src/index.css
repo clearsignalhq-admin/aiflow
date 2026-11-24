@@ -2806,3 +2806,14 @@ body {
   .tb-run, .validate-btn { font-size: 11px; padding: 5px 8px; }
   .toolbar-workflow-name { max-width: 110px; }
 }
+
+/* ── About and version banner ──────────────────────────────────────── */
+.about-grid { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 0; font-size: 12px; }
+.about-grid dt { color: var(--text-3); }
+.about-grid dd { margin: 0; }
+.about-changelog { font-size: 12px; }
+.version-banner {
+  display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap;
+  padding: 6px 12px; font-size: 12px; background: rgba(245, 158, 11, 0.15); color: var(--text);
+  border-bottom: 1px solid rgba(245, 158, 11, 0.4);
+}

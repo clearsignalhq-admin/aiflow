@@ -16,6 +16,7 @@ Globals:
         LLM_API_KEY: !Ref LLMApiKey
         LLM_MODEL: gpt-4o-mini
         LLM_BASE_URL: ""
+        GIT_COMMIT: !Ref GitCommit
         CORS_ORIGINS: !Sub '["https://${FrontendOrigin}","https://aiflow.fuatyazar.com","http://localhost:5173"]'
         SUPABASE_URL: !Ref SupabaseUrl
         SUPABASE_SERVICE_ROLE_KEY: !Ref SupabaseServiceRoleKey
@@ -44,6 +45,10 @@ Parameters:
   FrontendOrigin:
     Type: String
     Description: "Frontend URL for CORS (e.g. https://main.d1abc.amplifyapp.com)"
+  GitCommit:
+    Type: String
+    Default: unknown
+    Description: "Short git commit being deployed, shown in the About dialog (sam deploy --parameter-overrides ... GitCommit=$(git rev-parse --short HEAD))"
 
 Resources:
   AiFlowFunction:

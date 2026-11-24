@@ -40,6 +40,9 @@ import { ExplainModal } from './features/workflow/ExplainModal';
 import { SuggestionsModal } from './features/workflow/SuggestionsModal';
 import { SafetyModal } from './features/workflow/SafetyModal';
 import { CloudModal } from './features/workflow/CloudModal';
+import { AboutModal } from './components/AboutModal';
+import { VersionBanner } from './components/VersionBanner';
+import { useBackendVersion } from './hooks/useBackendVersion';
 import { ExportCodeModal } from './features/workflow/ExportCodeModal';
 import type { RunDetail } from './models/runs';
 import './index.css';
@@ -454,6 +457,9 @@ export default function WorkflowApp() {
   const [showSuggest, setShowSuggest] = useState(false);
   const [showSafety, setShowSafety] = useState(false);
   const [showCloud, setShowCloud] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
+  const backendVersion = useBackendVersion();
+  const handleOpenAbout = useCallback(() => setShowAbout(true), []);
   const handleOpenCloud = useCallback(() => setShowCloud(true), []);
   const handleCloudOpen = useCallback((loaded: Workflow, id: string) => {
     if (!confirmDiscard()) return;
@@ -557,6 +563,7 @@ export default function WorkflowApp() {
 
   return (
     <div className="app">
+      <VersionBanner backend={backendVersion} />
       <Toolbar
         workflowName={workflow.name}
         onNew={handleNew}
@@ -571,6 +578,7 @@ export default function WorkflowApp() {
         onSuggest={handleOpenSuggest}
         onSafety={handleOpenSafety}
         onCloud={handleOpenCloud}
+        onAbout={handleOpenAbout}
         onExportCode={handleOpenExportCode}
         onGenerate={handleGenerate}
         onRefine={handleRefine}
@@ -666,6 +674,8 @@ export default function WorkflowApp() {
       {showExportCode && (
         <ExportCodeModal workflow={workflow} onImport={handleExampleSelected} onClose={() => setShowExportCode(false)} />
       )}
+
+      {showAbout && <AboutModal backend={backendVersion} onClose={() => setShowAbout(false)} />}
 
       {showCloud && (
         <CloudModal

@@ -1,5 +1,17 @@
 # AiFlow — Current Iteration
 
+## Iteration 16 — Version Number and About
+
+#### Task 63 — Version Number and About Screen `[x]`
+
+- [x] One source of truth: root `VERSION`, `scripts/sync_version.py` (write / `--check`), `CHANGELOG.md`; tests fail on drift
+- [x] Backend: `app/version.py`, FastAPI version, `GET /api/health` reports version and commit (`GIT_COMMIT` from a template parameter)
+- [x] Frontend: version, commit and build date stamped at build time (Vite `define`; Amplify supplies the commit)
+- [x] **Help** menu with **About AiFlow** (versions, changelog, copy version info) and a banner when page and server differ in major/minor version
+- [x] Tests: 5 backend and 19 frontend
+
+---
+
 ## Iteration 15 — Top Bar
 
 #### Task 62 — Grouped Menus and Command Palette `[x]`

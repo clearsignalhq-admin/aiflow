@@ -125,12 +125,12 @@ Open **http://localhost:5173**.
 ## Running Tests
 
 ```bash
-# Backend (771 tests)
+# Backend (776 tests)
 cd backend
 .venv/Scripts/pytest -v       # Windows
 pytest -v                     # macOS / Linux
 
-# Frontend unit tests (430 tests)
+# Frontend unit tests (449 tests)
 cd frontend
 npm test
 
@@ -268,9 +268,15 @@ Click **Tests** in the toolbar to define test cases for the current workflow and
 - **Compare runs:** open any previous run, pick another run of the same suite under *Compare with* (the run just before it is preselected) and press **Compare**. You get a verdict (regression, improvement or no change) with the pass-rate movement, then each test case classified as **regressed**, **fixed**, **still failing**, **unchanged**, new, removed or not run in both. For cases that ran in both: which checks flipped (with the reason), which steps now run or no longer run, and whether the output, cost or model calls changed. A **workflow diff** shows what was added, removed or edited between the two runs (including changed settings such as a prompt or an expression), so a regression can be traced to an edit, plus coverage movement. Warnings flag runs that are not directly comparable: one real and one simulated, different seeds, edited test cases, unfinished runs, or ordinary variation between two real-model runs. Comparing in the other direction turns a regression into an improvement
 - Requires the suite tables: apply `supabase/update_202611241600.sql`, then `update_202611241700.sql` for real-model runs (both already in `supabase/schema.sql` for new projects)
 
+#### Versions and the About dialog
+
+The product version lives in one file, `VERSION`. To cut a release: edit `VERSION`, add an entry at the top of `CHANGELOG.md`, run `python scripts/sync_version.py` (it copies the number into `backend/app/version.py` and `frontend/package.json`), commit, and deploy. A test fails if any copy disagrees or the changelog does not lead with the current version. Numbering is `MAJOR.MINOR.PATCH`; while in private beta the major stays 0, a feature raises MINOR and a fix raises PATCH.
+
+**Help → About AiFlow** shows the version, the commit and build date of the page, the version and commit of the server (from `GET /api/health`), the changelog, and a **Copy version info** button for bug reports. If the page and the server differ in MAJOR or MINOR (typically a stale cached page after a deploy), a banner offers a reload; a different PATCH is treated as compatible. To show the commit of the server, deploy with `sam deploy --parameter-overrides ... GitCommit=$(git rev-parse --short HEAD)`; otherwise it reads `unknown`. The page's commit comes from Amplify (or git, locally) at build time.
+
 #### The top bar
 
-Everyday actions sit on the bar: undo/redo, **Validate**, **▶ Simulate**, **Tests**, **Refine** and **Generate**. The rest is grouped into three menus: **File** (new, open, save to a file, cloud workflows, examples), **Export** (edit JSON, code, Mermaid, report) and **Analyze** (explain, suggest changes, safety checks, run history). Press **Ctrl+K** (⌘K on a Mac) or use *Search actions* to find any action by typing part of its name or what it does; arrow keys and Enter work in the menus and in the palette.
+Everyday actions sit on the bar: undo/redo, **Validate**, **▶ Simulate**, **Tests**, **Refine** and **Generate**. The rest is grouped into four menus: **Help** (search actions, About), and **File** (new, open, save to a file, cloud workflows, examples), **Export** (edit JSON, code, Mermaid, report) and **Analyze** (explain, suggest changes, safety checks, run history). Press **Ctrl+K** (⌘K on a Mac) or use *Search actions* to find any action by typing part of its name or what it does; arrow keys and Enter work in the menus and in the palette.
 
 #### Cloud workflows, versions and sharing
 

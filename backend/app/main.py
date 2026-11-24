@@ -8,6 +8,7 @@ from slowapi.errors import RateLimitExceeded
 
 from app.core.body_limit import BodySizeLimitMiddleware
 from app.core.config import settings
+from app.version import __version__
 from app.core.limiter import limiter
 from app.core.supabase_client import bootstrap_admin
 from app.api.routes import router
@@ -31,7 +32,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="AiFlow API",
-    version="0.1.0",
+    version=__version__,
     docs_url="/api/docs",
     redoc_url="/api/redoc",
     lifespan=lifespan,

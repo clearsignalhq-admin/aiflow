@@ -635,15 +635,9 @@ About 20 buttons became: undo/redo, three menus (**File**: new, open, save, clou
 
 ---
 
-### Task 63 — Version Number and About Screen `[ ]`
+### Task 63 — Version Number and About Screen `[x]`
 
-Today nothing meaningful is tracked: the frontend `package.json` says `0.0.0` and the backend hardcodes `0.1.0` in `main.py`.
-
-- [ ] One source of truth for the product version, shown in an **About** dialog (product name, frontend version, backend version, build date and commit, links to the guide and licence)
-- [ ] Backend reports its version and commit from `/api/health`; frontend embeds its version at build time
-- [ ] Warn when the frontend and backend versions are incompatible (old cached page after a deploy)
-- [ ] Release notes / changelog shown from the About dialog
-- [ ] Decide the versioning scheme and how a release is cut (tag, changelog, deploy)
+Starting version 0.9.0. **Follow-ups (not scheduled):** a release script that bumps `VERSION`, stamps the changelog date, tags and deploys; the deploy command stamping the commit automatically (today it is an optional parameter); showing the version in the footer of the landing page; links to the user guide and video guide in the About dialog once Tasks 64-65 exist; a minimum-supported-page version the server can enforce for breaking API changes.
 
 ---
 

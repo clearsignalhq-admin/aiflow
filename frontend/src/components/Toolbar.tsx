@@ -35,6 +35,7 @@ interface Props {
   onSuggest?: () => void;
   onSafety?: () => void;
   onCloud?: () => void;
+  onAbout?: () => void;
   onExportCode?: () => void;
 }
 
@@ -46,7 +47,7 @@ export function Toolbar(props: Props) {
     workflowName, onNew, onSave, onOpen, onOpenExamplePicker, onValidate, onGenerate, onRefine, canRefine = false,
     onSimulate, onEditJson, onNameChange, isValidating, validationResult, isDark = true, onToggleTheme,
     onUndo, onRedo, canUndo = false, canRedo = false, onReport, onHistory, onTests, onMermaid, onExplain,
-    onSuggest, onSafety, onCloud, onExportCode,
+    onSuggest, onSafety, onCloud, onExportCode, onAbout,
   } = props;
 
   const [openMenu, setOpenMenu] = useState<string | null>(null);
@@ -89,8 +90,12 @@ export function Toolbar(props: Props) {
       { id: 'check:safety', label: 'Safety checks', group: 'Analyze', hint: 'Prompt-injection exposure and failure drill', onSelect: onSafety, disabledReason: 'Not available' },
       { id: 'history:runs', label: 'Run history', group: 'Analyze', hint: 'Saved simulation runs', onSelect: onHistory, disabledReason: 'Not available' },
     ];
-    return { file, export: exportItems, analyze };
-  }, [onNew, onOpen, onSave, onCloud, onOpenExamplePicker, onEditJson, onExportCode, onMermaid, onReport, onExplain, onSuggest, onSafety, onHistory]);
+    const help: ActionItem[] = [
+      { id: 'help:search', label: 'Search actions', group: 'Help', hint: 'Find any action by name', shortcut: `${MOD} K`, onSelect: () => setPaletteOpen(true) },
+      { id: 'about:about', label: 'About AiFlow', group: 'Help', hint: 'Version, what is new, and version info for bug reports', onSelect: onAbout, disabledReason: 'Not available' },
+    ];
+    return { file, export: exportItems, analyze, help };
+  }, [onAbout, onNew, onOpen, onSave, onCloud, onOpenExamplePicker, onEditJson, onExportCode, onMermaid, onReport, onExplain, onSuggest, onSafety, onHistory]);
 
   // Everything, for the palette: the menu items plus the actions that sit directly on the bar.
   const allActions = useMemo<ActionItem[]>(() => [
@@ -101,7 +106,7 @@ export function Toolbar(props: Props) {
     { id: 'ai:refine', label: 'Refine with AI', group: 'AI', hint: 'Improve this workflow with AI', onSelect: canRefine ? onRefine : undefined, disabledReason: 'Build a workflow first to refine it' },
     { id: 'edit:undo', label: 'Undo', group: 'Edit', shortcut: `${MOD} Z`, onSelect: canUndo ? onUndo : undefined, disabledReason: 'Nothing to undo' },
     { id: 'edit:redo', label: 'Redo', group: 'Edit', shortcut: `${MOD} Y`, onSelect: canRedo ? onRedo : undefined, disabledReason: 'Nothing to redo' },
-    ...menus.file, ...menus.export, ...menus.analyze,
+    ...menus.file, ...menus.export, ...menus.analyze, ...menus.help.filter((h) => h.id !== 'help:search'),
     { id: 'view:theme', label: isDark ? 'Switch to light mode' : 'Switch to dark mode', group: 'View', onSelect: onToggleTheme },
   ], [menus, isValidating, onValidate, onSimulate, onTests, onGenerate, canRefine, onRefine, canUndo, onUndo, canRedo, onRedo, isDark, onToggleTheme]);
 
@@ -140,6 +145,7 @@ export function Toolbar(props: Props) {
         <ToolbarMenu label="File" items={menus.file} {...menuProps('file')} />
         <ToolbarMenu label="Export" items={menus.export} {...menuProps('export')} />
         <ToolbarMenu label="Analyze" items={menus.analyze} {...menuProps('analyze')} />
+        <ToolbarMenu label="Help" items={menus.help} {...menuProps('help')} />
       </nav>
 
       <div className="tb-group" role="group" aria-label="Check and run">

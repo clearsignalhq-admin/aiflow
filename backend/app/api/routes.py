@@ -38,6 +38,7 @@ from app.services import run_persistence
 from app.providers.factory import get_provider
 from app.api.deps import ApprovedUser
 from app.core.config import settings
+from app.version import __version__
 from app.core.supabase_client import get_usage_today, increment_usage, insert_analytics_event
 from app.models.user import UserProfile
 
@@ -143,7 +144,8 @@ async def _check_execution_limit(user: UserProfile) -> None:
 
 @router.get("/health")
 async def health():
-    return {"status": "ok"}
+    """Liveness plus which build is running (the app compares this with its own version)."""
+    return {"status": "ok", "version": __version__, "commit": settings.git_commit}
 
 
 @router.post("/workflows/validate", response_model=ValidateWorkflowResponse)

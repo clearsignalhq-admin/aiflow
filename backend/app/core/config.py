@@ -2,6 +2,9 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
+    # Set at deploy time (see template.yaml); shown by /api/health and the About dialog
+    git_commit: str = "unknown"
+
     # LLM
     llm_provider: str = "openai"
     llm_api_key: str = ""

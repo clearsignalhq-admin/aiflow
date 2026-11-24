@@ -1,8 +1,8 @@
-import { defineConfig } from 'vitest/config';
-import react from '@vitejs/plugin-react';
+import { defineConfig, mergeConfig } from 'vitest/config';
+import viteConfig from './vite.config.ts';
 
-export default defineConfig({
-  plugins: [react()],
+// Extends the app's own config so tests see the same build-time values (version) and file access as the real build.
+export default mergeConfig(viteConfig, defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
@@ -29,4 +29,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));
