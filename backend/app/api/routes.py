@@ -20,6 +20,8 @@ from app.schemas.simulation import (
 from app.services.validator import validate_workflow
 from app.services.linter import lint_workflow
 from app.schemas.lint import LintWorkflowRequest, LintWorkflowResponse
+from app.schemas.explain import ExplainWorkflowRequest, ExplainWorkflowResponse
+from app.services.explainer import explain_workflow
 from app.services.workflow_generator import generate_workflow, chat_workflow_service, WorkflowGenerationError
 from app.services.simulator import (
     simulate, resume_simulation, get_paused_settings, export_paused_state, SimulationError, InvalidResumeError,
@@ -150,6 +152,12 @@ async def validate(request: ValidateWorkflowRequest, user: ApprovedUser):
 @router.post("/workflows/lint", response_model=LintWorkflowResponse)
 async def lint(request: LintWorkflowRequest, user: ApprovedUser):
     return LintWorkflowResponse(**lint_workflow(request.workflow).model_dump())
+
+
+@router.post("/workflows/explain", response_model=ExplainWorkflowResponse)
+async def explain(request: ExplainWorkflowRequest, user: ApprovedUser):
+    """Deterministic plain-language description (no LLM, so it costs no allowance)."""
+    return ExplainWorkflowResponse(markdown=explain_workflow(request.workflow))
 
 
 @router.post("/workflows/generate", response_model=GenerateWorkflowResponse)

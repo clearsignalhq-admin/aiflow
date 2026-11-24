@@ -2583,3 +2583,32 @@ body {
 .suite-coverage { display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
 .suite-coverage-title { font-weight: 700; font-size: 12px; }
 .suite-history-list { list-style: none; margin: 4px 0 0; padding: 0; }
+
+/* ── Mermaid ───────────────────────────────────────────────────────── */
+.mermaid-modal { width: min(720px, 94vw); max-height: 90vh; display: flex; flex-direction: column; }
+.mermaid-modal .modal-body { overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+.mermaid-tabs { padding: 0 16px; }
+.mermaid-text { font-family: monospace; font-size: 12px; min-height: 260px; white-space: pre; }
+
+/* ── Explain / Markdown ────────────────────────────────────────────── */
+.explain-modal { width: min(820px, 96vw); max-height: 90vh; display: flex; flex-direction: column; }
+.explain-body { overflow-y: auto; }
+.explain-actions { padding: 10px 16px; border-top: 1px solid var(--border-md, #333); }
+.md-view { font-size: 13px; line-height: 1.55; }
+.md-view h2 { font-size: 20px; margin: 4px 0 8px; }
+.md-view h3 { font-size: 15px; margin: 18px 0 6px; padding-bottom: 3px; border-bottom: 1px solid var(--border-md, #333); }
+.md-view h4 { font-size: 13px; margin: 12px 0 4px; }
+.md-view p { margin: 6px 0; }
+.md-view ol, .md-view ul { margin: 6px 0; padding-left: 22px; }
+.md-view li { margin: 3px 0; }
+.md-view code { font-family: monospace; font-size: 12px; background: rgba(127, 127, 127, 0.18); padding: 1px 4px; border-radius: 3px; word-break: break-word; }
+.md-view hr { border: none; border-top: 1px solid var(--border-md, #333); margin: 14px 0 8px; }
+.md-view .md-table { border-collapse: collapse; margin: 8px 0; font-size: 12px; width: 100%; }
+.md-view .md-table th, .md-view .md-table td { border: 1px solid var(--border-md, #333); padding: 4px 8px; text-align: left; vertical-align: top; }
+.md-view .md-table th { background: rgba(127, 127, 127, 0.12); }
+
+/* ── Export code ───────────────────────────────────────────────────── */
+.export-modal { width: min(600px, 94vw); max-height: 90vh; display: flex; flex-direction: column; }
+.export-modal .modal-body { overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+.export-notes { margin: 0; padding-left: 20px; font-size: 12px; line-height: 1.5; opacity: 0.85; }
+.export-done { font-size: 12px; }

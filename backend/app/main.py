@@ -14,6 +14,7 @@ from app.api.routes import router
 from app.api.user_routes import router as user_router
 from app.api.runs_routes import router as runs_router
 from app.api.suites_routes import router as suites_router
+from app.api.export_routes import router as export_router
 
 
 @asynccontextmanager
@@ -53,3 +54,4 @@ app.include_router(router)
 app.include_router(user_router)
 app.include_router(runs_router)
 app.include_router(suites_router)
+app.include_router(export_router)

@@ -35,6 +35,9 @@ import { formatApiError } from './utils/apiError';
 import { useAuth } from './context/AuthContext';
 import { RunHistoryModal } from './features/workflow/RunHistoryModal';
 import { SuiteModal } from './features/workflow/suites/SuiteModal';
+import { MermaidModal } from './features/workflow/MermaidModal';
+import { ExplainModal } from './features/workflow/ExplainModal';
+import { ExportCodeModal } from './features/workflow/ExportCodeModal';
 import type { RunDetail } from './models/runs';
 import './index.css';
 
@@ -436,6 +439,12 @@ export default function WorkflowApp() {
 
   const [showRunHistory, setShowRunHistory] = useState(false);
   const [showSuites, setShowSuites] = useState(false);
+  const [showMermaid, setShowMermaid] = useState(false);
+  const [showExplain, setShowExplain] = useState(false);
+  const [showExportCode, setShowExportCode] = useState(false);
+  const handleOpenExportCode = useCallback(() => setShowExportCode(true), []);
+  const handleOpenExplain = useCallback(() => setShowExplain(true), []);
+  const handleOpenMermaid = useCallback(() => setShowMermaid(true), []);
   const handleOpenSuites = useCallback(() => setShowSuites(true), []);
   const handleOpenHistory = useCallback(() => setShowRunHistory(true), []);
 
@@ -524,6 +533,9 @@ export default function WorkflowApp() {
         onValidate={handleValidate}
         onHistory={handleOpenHistory}
         onTests={handleOpenSuites}
+        onMermaid={handleOpenMermaid}
+        onExplain={handleOpenExplain}
+        onExportCode={handleOpenExportCode}
         onGenerate={handleGenerate}
         onRefine={handleRefine}
         canRefine={canRefine}
@@ -614,6 +626,18 @@ export default function WorkflowApp() {
           </div>
         </div>
       </div>
+
+      {showExportCode && (
+        <ExportCodeModal workflow={workflow} onClose={() => setShowExportCode(false)} />
+      )}
+
+      {showExplain && (
+        <ExplainModal workflow={workflow} onClose={() => setShowExplain(false)} />
+      )}
+
+      {showMermaid && (
+        <MermaidModal workflow={workflow} onImport={handleExampleSelected} onClose={() => setShowMermaid(false)} />
+      )}
 
       {showSuites && (
         <SuiteModal workflow={workflow} onClose={() => setShowSuites(false)} />

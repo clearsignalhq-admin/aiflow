@@ -573,6 +573,22 @@ HITL and user-pick pauses live in process memory, so on Lambda a resume often fa
 
 ---
 
+### Task 51 — Mermaid Export and Import `[x]`
+
+Future Directions D3 / quick win 2. Export a workflow as a Mermaid flowchart and import one (our own or hand-written). Diagrams carry shape, not settings.
+
+### Task 52 — Explain This Workflow `[x]`
+
+Future Directions quick win 6 / C4. Deterministic plain-language Markdown for reviewers; no LLM.
+
+### Task 53 — LangGraph Exporter `[x]`
+
+Future Directions D1. Real exporter generating a runnable Python project with optional tests from a suite.
+
+**Follow-ups (not scheduled):** import from LangGraph/n8n; exporters for other targets (plain Python, OpenAI Agents SDK, MCP tool definitions); implementing real integrations for TOOL/API/DATABASE/RAG from their settings; real-LLM suites.
+
+---
+
 ## Future Enhancements — Polish & Operations
 
 ### Custom SMTP + Branded Email Templates + Auth Rate Limits

@@ -1,5 +1,31 @@
 # AiFlow — Current Iteration
 
+## Iteration 9 — Sharing and Leaving the Tool
+
+Source: `docs/future/2026-11-24 AiFlow - Future Directions.md` (D1, D3, quick wins). Descriptions in `BACKLOG.md` (Tasks 51–53).
+
+#### Task 51 — Mermaid Export and Import `[x]`
+
+- [x] `services/mermaid.ts`: export with a shape and class per node type; tolerant import (chains, `&`, link styles, classes, front matter, comments)
+- [x] Inference warnings, START/END handling, size limits, never throws; statement splitter respects quotes and entities
+- [x] Round trip verified on all 10 example workflows (and re-export is byte-identical)
+- [x] Modal with Export (copy, download .mmd) and Import (live preview, errors, warnings)
+
+#### Task 52 — Explain This Workflow `[x]`
+
+- [x] `services/explainer.py`: deterministic Markdown (steps in flow order, decisions, people, connections, rough time/cost, findings); user text cannot break tables or headings
+- [x] `POST /api/workflows/explain` (no LLM, no allowance used)
+- [x] Safe Markdown renderer (no raw HTML) and a modal with copy / download
+
+#### Task 53 — LangGraph Exporter `[x]`
+
+- [x] `services/langgraph_exporter.py` replaces the stub: graph, steps, routing, HITL interrupts, CLI, README, requirements
+- [x] `POST /api/workflows/export/langgraph` returns a reproducible zip; optional suite id adds generated tests
+- [x] Generated projects run their own pytest in tests (subprocess); branches match the simulator seed-for-seed; hostile text stays data
+- [x] **Code** button: suite picker, download, next steps
+
+---
+
 ## Iteration 8 — Production Readiness (follow-ups from the Task 44 spike)
 
 Source: `docs/AiFlow - Async Suite Runs Design.md`. Full descriptions in `BACKLOG.md` (Tasks 46–50).
