@@ -1,5 +1,20 @@
 # AiFlow — Current Iteration
 
+## Iteration 13 — Failure Injection and Safety Checks
+
+Source: `docs/future/2026-11-24 AiFlow - Future Directions.md` (B7, B8).
+
+#### Task 60 — Resilience Drill and Injection Exposure `[x]`
+
+- [x] `inject` simulation setting: make one step fail (error, timeout, empty, malformed) with a warning in the trace
+- [x] `services/resilience.py`: baseline run, then one run per external step and failure kind; verdicts handled / halted / not noticed; undecidable conditions count as halted; capped at 30 steps
+- [x] `services/injection_exposure.py`: untrusted sources to AI steps to write sinks, with human-review gating and severity
+- [x] `POST /api/workflows/injection-exposure` (free) and `/resilience` (one execution)
+- [x] **Safety** dialog; show-the-step from an exposure
+- [x] Tests: 21 backend (including: the suggested failure-branch fix turns "not noticed" into "handled") and 8 frontend
+
+---
+
 ## Iteration 12 — Suggested Changes
 
 Source: `docs/future/2026-11-24 AiFlow - Future Directions.md` (AI-suggested fixes).

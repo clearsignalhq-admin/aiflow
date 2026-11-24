@@ -38,6 +38,7 @@ import { SuiteModal } from './features/workflow/suites/SuiteModal';
 import { MermaidModal } from './features/workflow/MermaidModal';
 import { ExplainModal } from './features/workflow/ExplainModal';
 import { SuggestionsModal } from './features/workflow/SuggestionsModal';
+import { SafetyModal } from './features/workflow/SafetyModal';
 import { ExportCodeModal } from './features/workflow/ExportCodeModal';
 import type { RunDetail } from './models/runs';
 import './index.css';
@@ -446,6 +447,8 @@ export default function WorkflowApp() {
   const handleOpenExportCode = useCallback(() => setShowExportCode(true), []);
   const handleOpenExplain = useCallback(() => setShowExplain(true), []);
   const [showSuggest, setShowSuggest] = useState(false);
+  const [showSafety, setShowSafety] = useState(false);
+  const handleOpenSafety = useCallback(() => setShowSafety(true), []);
   const handleOpenSuggest = useCallback(() => setShowSuggest(true), []);
   const handleChangesApplied = useCallback((updated: Workflow, count: number) => {
     setWorkflow(updated);           // one undoable edit, however many changes were applied
@@ -544,6 +547,7 @@ export default function WorkflowApp() {
         onMermaid={handleOpenMermaid}
         onExplain={handleOpenExplain}
         onSuggest={handleOpenSuggest}
+        onSafety={handleOpenSafety}
         onExportCode={handleOpenExportCode}
         onGenerate={handleGenerate}
         onRefine={handleRefine}
@@ -638,6 +642,14 @@ export default function WorkflowApp() {
 
       {showExportCode && (
         <ExportCodeModal workflow={workflow} onImport={handleExampleSelected} onClose={() => setShowExportCode(false)} />
+      )}
+
+      {showSafety && (
+        <SafetyModal
+          workflow={workflow}
+          onSelectNode={(id) => { setSelectedNodeId(id); setSelectedEdgeId(null); setShowSafety(false); }}
+          onClose={() => setShowSafety(false)}
+        />
       )}
 
       {showSuggest && (

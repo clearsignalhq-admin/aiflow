@@ -25,6 +25,9 @@ from app.services.explainer import explain_workflow
 from app.schemas.patch import ApplyRequest, ApplyResponse, FixesRequest, FixesResponse, SuggestRequest, SuggestResponse
 from app.services.patching import apply_changes, view as view_change
 from app.services.fixes import suggest_fixes
+from app.schemas.safety import ExposureReport, ResilienceReport, ResilienceRequest
+from app.services.injection_exposure import analyse_exposure
+from app.services.resilience import run_drill
 from app.services.change_suggester import SuggestionError, suggest_changes
 from app.services.workflow_generator import generate_workflow, chat_workflow_service, WorkflowGenerationError
 from app.services.simulator import (
@@ -168,6 +171,28 @@ async def explain(request: ExplainWorkflowRequest, user: ApprovedUser):
 async def workflow_fixes(request: FixesRequest, user: ApprovedUser):
     """Deterministic suggested fixes for what the checks flag (no LLM, so it costs no allowance)."""
     return FixesResponse(changes=[view_change(request.workflow, c) for c in suggest_fixes(request.workflow)])
+
+
+@router.post("/workflows/injection-exposure", response_model=ExposureReport)
+async def injection_exposure(request: FixesRequest, user: ApprovedUser):
+    """Which model steps could be steered by untrusted text into an action (static analysis, free)."""
+    return analyse_exposure(request.workflow)
+
+
+@router.post("/workflows/resilience", response_model=ResilienceReport)
+async def resilience_drill(request: ResilienceRequest, user: ApprovedUser):
+    """Make each external step fail in turn (mock mode) and report what the workflow does. Counts as one execution."""
+    await _check_execution_limit(user)
+    budget = _Budget(settings.request_budget_seconds)
+    try:
+        report = await asyncio.wait_for(run_drill(request.workflow, request.input, request.seed),
+                                        timeout=min(settings.simulation_timeout_seconds, budget.remaining()))
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail="The resilience check timed out. Try a smaller workflow.")
+    except SimulationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    await increment_usage(user.id, "executions")
+    return report
 
 
 @router.post("/workflows/suggest", response_model=SuggestResponse)

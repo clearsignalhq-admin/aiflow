@@ -23,6 +23,7 @@ from app.schemas.simulation import (
     ChoiceOption,
     ConditionMode,
     ExecutionTrace,
+    FailureKind,
     HITLMode,
     NodeExecution,
     NodeExecutionStatus,
@@ -57,6 +58,17 @@ class _PausedState:
 
 
 _paused_store: dict[str, _PausedState] = {}
+
+
+def injected_output(node: Any, kind: FailureKind) -> Any:
+    """What a step produces when made to fail. A timeout produces nothing at all: the call raises."""
+    if kind == FailureKind.TIMEOUT:
+        raise TimeoutError(f"Injected failure: '{node.name}' timed out.")
+    if kind == FailureKind.ERROR:
+        return {"ok": False, "status": 500, "error": f"Injected failure: '{node.name}' returned a server error."}
+    if kind == FailureKind.EMPTY:
+        return {}
+    return {"raw": "<html><body>502 Bad Gateway</body></html>"}
 
 
 # ── Public entry points ───────────────────────────────────────────────────────
@@ -301,7 +313,8 @@ async def _run_bfs(
             return trace
 
         try:
-            output = await node_handlers.dispatch(node, data, settings)
+            injected = settings.inject if settings.inject and settings.inject.node_id == node.id else None
+            output = injected_output(node, injected.kind) if injected else await node_handlers.dispatch(node, data, settings)
             step = NodeExecution(
                 node_id=node.id,
                 node_name=node.name,
@@ -311,6 +324,7 @@ async def _run_bfs(
                 completed_at=_now(),
                 input=data,
                 output=output,
+                warnings=[f"Injected failure ({injected.kind.value}): this step was made to fail on purpose."] if injected else [],
             )
         except Exception as exc:
             step = NodeExecution(

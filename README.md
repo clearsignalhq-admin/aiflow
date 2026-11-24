@@ -125,12 +125,12 @@ Open **http://localhost:5173**.
 ## Running Tests
 
 ```bash
-# Backend (736 tests)
+# Backend (757 tests)
 cd backend
 .venv/Scripts/pytest -v       # Windows
 pytest -v                     # macOS / Linux
 
-# Frontend unit tests (385 tests)
+# Frontend unit tests (393 tests)
 cd frontend
 npm test
 
@@ -267,6 +267,15 @@ Click **Tests** in the toolbar to define test cases for the current workflow and
 - **Real-model runs:** choose *Real model* to run the cases against the actual AI model instead of simulated answers. Before you run, the dialog shows the most model calls and rough cost the run could use, and how many AI requests you have left today; it asks you to confirm. Each model call a case makes counts against your daily AI request allowance (a timed-out case is charged the most it could have used), at most 20 cases per real run, and answers can differ between runs, so checks on model output are less exact than with the simulator. A pinned *Mock output* on an AI step is ignored in real mode A run is tied to the workflow it was created for (matched by workflow id) and uses a snapshot of both the workflow and the cases, so editing them mid-run changes nothing
 - **Compare runs:** open any previous run, pick another run of the same suite under *Compare with* (the run just before it is preselected) and press **Compare**. You get a verdict (regression, improvement or no change) with the pass-rate movement, then each test case classified as **regressed**, **fixed**, **still failing**, **unchanged**, new, removed or not run in both. For cases that ran in both: which checks flipped (with the reason), which steps now run or no longer run, and whether the output, cost or model calls changed. A **workflow diff** shows what was added, removed or edited between the two runs (including changed settings such as a prompt or an expression), so a regression can be traced to an edit, plus coverage movement. Warnings flag runs that are not directly comparable: one real and one simulated, different seeds, edited test cases, unfinished runs, or ordinary variation between two real-model runs. Comparing in the other direction turns a regression into an improvement
 - Requires the suite tables: apply `supabase/update_202611241600.sql`, then `update_202611241700.sql` for real-model runs (both already in `supabase/schema.sql` for new projects)
+
+#### Safety checks
+
+**Safety** (toolbar) runs two checks that need no AI:
+
+- **Prompt-injection exposure** reads the design and lists every AI step that both receives untrusted text (user input, retrieved documents, API responses, database rows, tool output) and can lead to an action that changes something (a write API, a write query, a tool call). Severity is *high* when it can reach a write, *medium* for a tool call, and *low* when a human review sits on every path in between. Each entry says what to do about it. Free; endpoint `POST /api/workflows/injection-exposure`.
+- **Failure drill** makes each outside step (API, database, tool, retrieval, AI) fail in turn with a server error, a timeout, an empty result and a malformed result, in a simulated run using the sample input, and reports for each: **handled** (the workflow noticed and took a different route), **stops** (the run failed, including a decision that could not read the failed result), or **not noticed** (it finished exactly as if nothing had happened, which is the dangerous one). Steps that did not run with that input are listed so you can try another. Counts as one run against the daily limit; endpoint `POST /api/workflows/resilience`. The same failure can be injected on a single step through the `inject` simulation setting.
+
+These are design checks, not proof of safety: they do not test real model behaviour, PII leakage or jailbreaks.
 
 #### Suggested changes
 

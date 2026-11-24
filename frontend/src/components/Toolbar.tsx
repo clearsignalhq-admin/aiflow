@@ -29,6 +29,7 @@ interface Props {
   onMermaid?: () => void;
   onExplain?: () => void;
   onSuggest?: () => void;
+  onSafety?: () => void;
   onExportCode?: () => void;
 }
 
@@ -59,6 +60,7 @@ export function Toolbar({
   onMermaid,
   onExplain,
   onSuggest,
+  onSafety,
   onExportCode,
 }: Props) {
   const hasErrors = validationResult && !validationResult.valid;
@@ -114,6 +116,7 @@ export function Toolbar({
         <button className="btn btn-ghost" onClick={onExportCode} disabled={!onExportCode} title="Export as a runnable LangGraph (Python) project">Code</button>
         <button className="btn btn-ghost" onClick={onExplain} disabled={!onExplain} title="Plain-language explanation of this workflow">Explain</button>
         <button className="btn btn-ghost" onClick={onSuggest} disabled={!onSuggest} title="Suggested fixes and AI-proposed changes">Suggest</button>
+        <button className="btn btn-ghost" onClick={onSafety} disabled={!onSafety} title="Prompt-injection exposure and failure drill">Safety</button>
         <button className="btn btn-ghost" onClick={onMermaid} disabled={!onMermaid} title="Export or import a Mermaid diagram">Mermaid</button>
         <button className="btn btn-ghost" onClick={onTests} disabled={!onTests} title="Test suites: check the workflow against many inputs">Tests</button>
         <button className="btn btn-ghost" onClick={onHistory} disabled={!onHistory} title="Saved simulation runs">History</button>

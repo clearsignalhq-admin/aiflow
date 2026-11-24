@@ -28,6 +28,19 @@ class DisplayMode(str, Enum):
     MANUAL = "manual"
 
 
+class FailureKind(str, Enum):
+    ERROR = "error"          # the service answered with a server error
+    TIMEOUT = "timeout"      # the call never came back
+    EMPTY = "empty"          # a successful call that returned nothing
+    MALFORMED = "malformed"  # a response that is not the expected data
+
+
+class InjectedFailure(BaseModel):
+    """Make one step fail in a given way (resilience testing; mock mode)."""
+    node_id: str = Field(max_length=100)
+    kind: FailureKind
+
+
 class SimulationSettings(BaseModel):
     llm_mode: LLMMode = LLMMode.MOCK
     hitl_mode: HITLMode = HITLMode.AUTO_APPROVE
@@ -36,6 +49,7 @@ class SimulationSettings(BaseModel):
     animation_delay_ms: int = 600
     evaluate: bool = False
     seed: int = 0   # seeds schema-generated mock data so runs are reproducible
+    inject: Optional[InjectedFailure] = None   # make one step fail (see services/resilience.py)
 
 
 class NodeExecutionStatus(str, Enum):

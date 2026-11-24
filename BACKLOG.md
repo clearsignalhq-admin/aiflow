@@ -613,6 +613,12 @@ Done for design findings and free-text instructions. **Follow-ups (not scheduled
 
 ---
 
+### Task 60 — Resilience Drill and Injection Exposure `[x]`
+
+Future Directions B7 and B8, static and simulated parts. **Follow-ups (not scheduled):** hostile-content injection into retrieval and API payloads with a real model; PII-leakage and jailbreak case generation; running the drill as a suite and tracking it in run comparison; injecting several failures at once; per-step failure settings in test cases.
+
+---
+
 ## Future Enhancements — Polish & Operations
 
 ### Custom SMTP + Branded Email Templates + Auth Rate Limits
