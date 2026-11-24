@@ -1,6 +1,85 @@
 # AiFlow — Current Iteration
 
-## MVP2 — Workflow Simulator
+## Post-MVP2.5 — Hardening & Signal
+
+Source: `docs/future/2026-11-24 AiFlow - Future Directions.md` (§4 Phase 1, adjusted in §8.5). Full task descriptions are in `BACKLOG.md` (Tasks 36–45). Work in order; complete each task (including tests) before the next.
+
+### Iteration 5 — Safety and Contracts
+
+#### Task 36 — Safe Expression Evaluator `[ ]`
+
+- [ ] Replace `eval()` in `select_condition_edges` with a safe evaluator
+- [ ] Report evaluation errors in the trace (no silent fall-through)
+- [ ] pytest incl. escape attempts
+- [ ] (optional) "test expression" box in CONDITION properties panel
+
+#### Task 37 — Edge-Condition Contract `[ ]`
+
+- [ ] Decide + document expression language and result → edge mapping
+- [ ] Remove/document hardcoded label vocabulary
+- [ ] Align generator prompt, validator, simulator, properties panel
+- [ ] Validator warns on unmatchable CONDITION edges
+- [ ] Update docs/README
+
+#### Task 38 — Request Size Limits `[ ]`
+
+- [ ] Limits on nodes / edges / config size (all workflow endpoints)
+- [ ] Request body size limit
+- [ ] UI error messages + oversized import rejected
+- [ ] pytest per limit
+
+### Iteration 6 — Signal
+
+#### Task 39 — Static Analysis / Lint Engine `[ ]`
+
+- [ ] Rule set with `severity`, `node_id`, `rule_id`, `fix_hint`
+- [ ] Lint endpoint + pytest per rule
+- [ ] Findings panel + node badges in UI
+
+#### Task 40 — Data Contracts `[ ]`
+
+- [ ] Optional `input_schema` / `output_schema` on nodes (frontend + backend)
+- [ ] Generator fills them; validator checks edge compatibility
+- [ ] Properties panel view/edit
+
+#### Task 41 — Schema-Conformant Mock Outputs `[ ]`
+
+- [ ] Mock handlers conform to `output_schema` (seeded, deterministic)
+- [ ] Per-node `mock_output` override
+- [ ] CONDITION branches taken on real data
+
+### Iteration 7 — Persistence and Cleanup
+
+#### Task 42 — Persist Traces and Runs `[ ]`
+
+- [ ] Supabase tables + RLS; `schema.sql` change **and** matching `update_YYYYMMDDhhmm.sql`
+- [ ] API: list / fetch / delete runs; retention + size caps
+- [ ] UI: run history + replay
+
+#### Task 43 — Fix `user-pick` Condition Mode `[ ]`
+
+- [ ] Pause at CONDITION and let user pick an edge (reuse HITL pause/resume)
+- [ ] Tests incl. an end-to-end HITL pause test
+
+#### Task 44 — Spike: Async Suite Runs on Lambda `[ ]`
+
+- [ ] Design note in `docs/` (timeouts, job model, storage, usage accounting)
+
+#### Task 45 — Cleanup and Doc Consistency `[ ]`
+
+- [ ] Fix redundant branch in `mock_evaluate`
+- [ ] Audit broad `except Exception` handlers
+- [x] BACKLOG.md / TASKS.md synced (Tasks 21–33 marked done in backlog)
+
+---
+
+## MVP2.5 — Private Deployment (completed)
+
+Auth (Supabase), access control, admin page, landing page, SEO, AWS Lambda + Amplify deployment — done. Tasks 34 (email templates) and 35 (auth rate limits) were **skipped** pending custom SMTP / plan upgrade; see `BACKLOG.md` → Future Enhancements.
+
+---
+
+## MVP2 — Workflow Simulator (completed)
 
 Full spec: `docs/AiFlow - MVP2.md`
 

@@ -254,7 +254,7 @@ Full spec: `docs/AiFlow - MVP2.md`
 
 ## Phase 13 — Backend Simulator
 
-### Task 21 — Simulation Engine `[ ]`
+### Task 21 — Simulation Engine `[x]`
 
 - Pydantic models: `NodeExecution`, `ExecutionTrace`, `SimulationSettings`, `SimulateRequest`
 - `simulator.py`: topological sort + handler dispatch + trace builder
@@ -263,7 +263,7 @@ Full spec: `docs/AiFlow - MVP2.md`
 - Extension point stubbed for future real-LLM calls
 - pytest: valid trace, minimal START→END, LLM mock shape, CONDITION expression, cycle detection, disconnected node
 
-### Task 22 — HITL Simulation `[ ]`
+### Task 22 — HITL Simulation `[x]`
 
 - Auto-approve mode: returns `{ approved: true, reviewer: "auto" }` immediately
 - Pause mode: returns `status: paused` with paused node ID; frontend resumes via `POST /api/workflows/simulate/resume`
@@ -273,28 +273,28 @@ Full spec: `docs/AiFlow - MVP2.md`
 
 ## Phase 14 — Frontend Simulator UI
 
-### Task 23 — SimulateModal `[ ]`
+### Task 23 — SimulateModal `[x]`
 
 - Settings form: HITL mode, CONDITION mode, display mode, animation delay slider (LLM locked to mock)
 - Input textarea for sample workflow input JSON (client-side validated)
 - Submit → calls API → passes trace to App
 - Loading state during call
 
-### Task 24 — TracePanel `[ ]`
+### Task 24 — TracePanel `[x]`
 
 - List of execution steps: node name, type icon, status badge, duration
 - Click step → expand to show input/output JSON
 - "Clear trace" button
 - "Next Step" button for manual step-through mode
 
-### Task 25 — Canvas Node Highlighting `[ ]`
+### Task 25 — Canvas Node Highlighting `[x]`
 
 - `WorkflowNodeComponent` accepts optional `executionStatus` prop
 - CSS status rings: pending (dim) / running (pulse blue) / success (green) / error (red) / waiting (yellow)
 - Animated mode: App drives `currentStep` index with setTimeout chain
 - Instant mode: all statuses set at once on trace load
 
-### Task 26 — Toolbar + App Wiring `[ ]`
+### Task 26 — Toolbar + App Wiring `[x]`
 
 - "Simulate" button in toolbar (between Validate and JSON)
 - `showSimulateModal` + `simulationTrace` state in App
@@ -305,7 +305,7 @@ Full spec: `docs/AiFlow - MVP2.md`
 
 ## Phase 15 — Simulation Evaluation
 
-### Task 30 — Simulation Evaluator Backend `[ ]`
+### Task 30 — Simulation Evaluator Backend `[x]`
 
 After a simulation run completes, optionally call an LLM to evaluate the execution trace and return a structured report.
 
@@ -341,7 +341,7 @@ recommendations: [str]  # concrete suggestions for improvement
 - `evaluate=False` → response evaluation is null
 - Paused/errored trace skips evaluation
 
-### Task 31 — Evaluation UI `[ ]`
+### Task 31 — Evaluation UI `[x]`
 
 - "Evaluate results" toggle in SimulateModal (default off)
 - `EvaluationPanel` component: score badge (colour-coded: ≥7 green, 4–6 amber, ≤3 red), summary paragraph, collapsible strengths / issues / recommendations lists
@@ -353,7 +353,7 @@ recommendations: [str]  # concrete suggestions for improvement
 
 ## Phase 16 — Simulation Testing
 
-### Task 27 — Simulation Unit Tests `[ ]`
+### Task 27 — Simulation Unit Tests `[x]`
 
 Vitest coverage:
 - `SimulateModal` renders with correct default settings
@@ -362,7 +362,7 @@ Vitest coverage:
 - Node status badges render correct CSS classes
 - Manual step-through "Next Step" advances cursor
 
-### Task 28 — Simulation E2E Tests `[ ]`
+### Task 28 — Simulation E2E Tests `[x]`
 
 Playwright coverage:
 - Click Simulate → modal opens
@@ -373,9 +373,9 @@ Playwright coverage:
 
 ---
 
-## Phase 16 — Documentation Update
+## Phase 16b — Documentation Update
 
-### Task 29 — README Update `[ ]`
+### Task 29 — README Update `[x]`
 
 - Add Simulator section to README
 - Document simulation settings and mock handler behavior
@@ -387,7 +387,7 @@ Playwright coverage:
 
 **Goal:** replace the single customer-support example with a categorised library of workflows users can load and immediately simulate, covering a range of industries and complexity levels.
 
-### Task 32 — Categorised Example Workflows `[ ]`
+### Task 32 — Categorised Example Workflows `[x]`
 
 Create workflow JSON files in `examples/` organised by industry and complexity. Each example must be simulation-ready (valid START/END, sensible node connections).
 
@@ -407,7 +407,7 @@ Create workflow JSON files in `examples/` organised by industry and complexity. 
 - `examples/complex/supply-chain-monitor.json` — DATABASE poll → multiple CONDITIONs → TOOL (alert) → LLM recommendation → HITL → DATABASE update
 - `examples/complex/multi-agent-customer-journey.json` — intake LLM → CONDITION (tier) → three parallel paths (basic/premium/enterprise) each with HITL and RAG, merging at a final TRANSFORM → END
 
-### Task 33 — Example Picker UI `[ ]`
+### Task 33 — Example Picker UI `[x]`
 
 Replace the single "Example" toolbar button with a modal that shows examples grouped by category and difficulty.
 
@@ -440,6 +440,100 @@ Skipped for MVP2.5 — Supabase requires custom SMTP to be configured before ema
 
 Skipped for MVP2.5 — requires custom SMTP or a Supabase plan upgrade to configure. See Future Enhancements below for recommended settings.
 
+
+---
+
+# Post-MVP2.5 — Hardening & Signal
+
+Source: `docs/future/2026-11-24 AiFlow - Future Directions.md` — §4 Phase 1 as adjusted in §8.5. Goal: make simulation produce real signal and remove the known security/robustness gaps before building datasets/evals (Phase 2 of that doc).
+
+Order matters: 36 and 37 are done together (the condition contract changes what the evaluator must support).
+
+### Task 36 — Safe Expression Evaluator `[ ]`
+
+Replace `eval()` in `node_handlers.select_condition_edges` (Future Directions A1, §8.1). Highest-priority item.
+
+- Use a safe evaluator (`simpleeval` / `asteval` / whitelist AST walker); no attribute access, no calls beyond an allow-list
+- Evaluation errors are **reported in the trace** (node output / warning) instead of silently falling through to "follow all edges"
+- pytest: normal expressions, missing fields, and escape attempts (`().__class__.__mro__...`, `__import__`, attribute chains, huge expressions)
+- Optional: "test this expression" box in the CONDITION properties panel against sample data
+
+### Task 37 — Edge-Condition Contract `[ ]`
+
+Define what `edge.condition` means and make every layer agree (§8.2, §8.3 #2).
+
+- Decide and document: expression language (Python subset vs JS — the docs currently say JS, the code is Python) and how an expression result maps to edge labels
+- Remove the hardcoded label vocabulary (`true/yes/complex/1`, `false/no/simple/0`) or make it an explicit, documented default
+- Generator prompt, validator, simulator, and properties panel use the same contract
+- Validator warns when a CONDITION's outgoing edges cannot be matched by its expression
+- Update `docs/` specs and README accordingly
+
+### Task 38 — Request Size Limits `[ ]`
+
+No limits exist on `Workflow.nodes`, `edges`, or node `config` (§8.3 #1).
+
+- Pydantic limits (e.g. nodes ≤ 100, edges ≤ 300, config size cap) applied on validate / simulate / chat / generate
+- Request body size limit at app/proxy level
+- Clear 413/422 error messages surfaced in the UI
+- pytest for each limit; frontend import also rejects oversized files
+
+### Task 39 — Static Analysis / Lint Engine `[ ]`
+
+Deterministic rules richer than the validator (A2). Replaces hardcoded text in `mock_evaluate`.
+
+- Rules: unreachable nodes / dead ends, CONDITION with one edge or unlabelled branches, API/DATABASE/TOOL without failure branch, HITL after an irreversible node, `{{field}}` read with no upstream producer, cycles with bounded-loop hint, per-path cost/latency estimate
+- Output: findings with `severity`, `node_id`, `rule_id`, `fix_hint`
+- `POST /api/workflows/lint` (or extend validate) + pytest per rule
+- UI: findings listed in a panel and shown as badges on nodes; click focuses the node
+
+### Task 40 — Data Contracts `[ ]`
+
+Optional `input_schema` / `output_schema` (JSON Schema) on nodes (A3).
+
+- Model change is additive and optional; bump/handle `version` migrations explicitly
+- Generator fills them in; validator checks edge compatibility
+- Properties panel can view/edit them
+- Frontend + backend models stay in sync
+
+### Task 41 — Schema-Conformant Mock Outputs `[ ]`
+
+Depends on Task 40 (A4).
+
+- Mock handlers generate outputs that conform to the node's `output_schema`
+- Per-node `mock_output` override in the properties panel
+- Deterministic (seeded) so runs are comparable
+- CONDITION expressions now take real branches in simulation
+
+### Task 42 — Persist Traces and Runs `[ ]`
+
+Prerequisite for most later evaluation work (A6).
+
+- Supabase table(s) for runs/traces, per user, with RLS
+- Schema change follows the migration convention: update `supabase/schema.sql` **and** add a matching `supabase/update_YYYYMMDDhhmm.sql` with just the delta
+- API to list / fetch / delete runs; retention and size caps
+- UI: run history list; replay a stored trace on the canvas
+
+### Task 43 — Fix `user-pick` Condition Mode `[ ]`
+
+Currently returns the first edge silently (A5).
+
+- Pause at the CONDITION node and let the user pick an edge, reusing the HITL pause/resume mechanism
+- pytest + e2e covering the pause/resume path
+- Also add one test proving the HITL pause path end to end (§8.2)
+
+### Task 44 — Spike: Async Suite Runs on Lambda `[ ]`
+
+Design-only, before any dataset/suite work (§8.3 #4).
+
+- Document timeout limits (Lambda, API Gateway) and a job model: start → job id → poll status
+- Decide storage (ties to Task 42) and usage accounting for suite runs
+- Output: a short design note in `docs/`; no production code
+
+### Task 45 — Cleanup and Doc Consistency `[ ]`
+
+- Fix the redundant `+1`/`-1` branch in `mock_evaluate` (noting it remains a placeholder)
+- Audit broad `except Exception` handlers in `simulator.py` and providers so failures reach the trace
+- Keep BACKLOG.md and TASKS.md in sync going forward (done 2026-11-24 for Tasks 21–33)
 
 ---
 
