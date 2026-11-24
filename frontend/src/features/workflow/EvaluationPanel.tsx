@@ -44,6 +44,12 @@ export function EvaluationPanel({ evaluation }: Props) {
         </span>
       </div>
 
+      {evaluation.fallback_reason && (
+        <div className="eval-fallback" role="note">
+          Showing the built-in (mock) review instead of an AI review: {evaluation.fallback_reason}
+        </div>
+      )}
+
       <p className="eval-summary">{evaluation.summary}</p>
 
       <Section title="Strengths" items={evaluation.strengths} icon="✓ " />

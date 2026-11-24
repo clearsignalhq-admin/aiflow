@@ -1,3 +1,4 @@
+import logging
 from typing import Optional
 
 import httpx
@@ -20,6 +21,7 @@ from app.core.supabase_client import (
 )
 from app.models.user import AccessRequest, UsageToday, UserProfile
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api")
 
 
@@ -67,7 +69,8 @@ async def _verify_turnstile(token: str, remote_ip: str) -> bool:
                 },
             )
             return resp.json().get("success", False)
-    except Exception:
+    except Exception as exc:
+        logger.warning("Turnstile verification request failed: %s", exc)
         return False
 
 

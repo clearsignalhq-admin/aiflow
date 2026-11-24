@@ -36,6 +36,16 @@ DEMO_USER = _make_profile(id="demo-user-id", email="demo@example.com", role="dem
 _ZERO_USAGE = {"executions": 0, "llm_requests": 0}
 
 
+@pytest.fixture(autouse=True)
+def _never_persist_runs_to_real_supabase():
+    """backend/.env may hold real Supabase credentials; tests must never write runs there.
+
+    Persistence tests re-enable it explicitly and mock the app.core.supabase_client functions.
+    """
+    with patch("app.services.run_persistence._enabled", return_value=False),          patch("app.api.routes.insert_analytics_event", new_callable=AsyncMock):
+        yield
+
+
 @pytest.fixture(autouse=False)
 def override_approved_user():
     """Override auth deps and stub Supabase usage calls for an approved user."""

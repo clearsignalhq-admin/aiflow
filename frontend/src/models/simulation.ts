@@ -21,6 +21,13 @@ export interface ExecutionTrace {
   completed_at?: string;
   status: 'running' | 'paused' | 'complete' | 'error';
   steps: NodeExecution[];
+  /** Set while a CONDITION is waiting for the user to pick a branch (user-pick mode). */
+  pending_choice?: PendingChoice | null;
+}
+
+export interface PendingChoice {
+  node_id: string;
+  options: { target_id: string; target_name: string; label?: string | null }[];
 }
 
 export interface SimulationEvaluation {
@@ -29,6 +36,9 @@ export interface SimulationEvaluation {
   strengths: string[];
   issues: string[];
   recommendations: string[];
+  source?: 'llm' | 'mock';
+  /** Set when a requested LLM evaluation fell back to the mock evaluator. */
+  fallback_reason?: string | null;
 }
 
 export interface SimulationSettings {

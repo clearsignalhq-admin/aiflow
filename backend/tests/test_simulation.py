@@ -168,12 +168,12 @@ async def test_condition_random_mode_follows_exactly_one_edge():
 
 
 @pytest.mark.asyncio
-async def test_condition_user_pick_follows_first_edge():
+async def test_condition_user_pick_pauses_for_a_choice():
     trace = await simulate(_branching(), {}, _default_settings(condition_mode=ConditionMode.USER_PICK))
-    assert trace.status == "complete"
-    end_steps = [s for s in trace.steps if s.node_type == "END"]
-    assert len(end_steps) == 1
-    assert end_steps[0].node_id == "ea"
+    assert trace.status == "paused"
+    assert trace.pending_choice is not None
+    assert {o.target_id for o in trace.pending_choice.options} == {"ea", "eb"}
+    assert not [s for s in trace.steps if s.node_type == "END"]
 
 
 @pytest.mark.asyncio

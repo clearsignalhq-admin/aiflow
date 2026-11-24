@@ -1,4 +1,5 @@
 import asyncio
+import logging
 
 from fastapi import APIRouter, HTTPException, status as http_status
 from app.schemas.requests import (
@@ -19,8 +20,9 @@ from app.services.validator import validate_workflow
 from app.services.linter import lint_workflow
 from app.schemas.lint import LintWorkflowRequest, LintWorkflowResponse
 from app.services.workflow_generator import generate_workflow, chat_workflow_service, WorkflowGenerationError
-from app.services.simulator import simulate, resume_simulation, get_paused_settings, SimulationError
+from app.services.simulator import simulate, resume_simulation, get_paused_settings, SimulationError, InvalidResumeError
 from app.services.evaluator import mock_evaluate, llm_evaluate, EvaluationError
+from app.services import run_persistence
 from app.providers.factory import get_provider
 from app.api.deps import ApprovedUser
 from app.core.config import settings
@@ -28,6 +30,7 @@ from app.core.supabase_client import get_usage_today, increment_usage, insert_an
 from app.models.user import UserProfile
 
 router = APIRouter(prefix="/api")
+logger = logging.getLogger(__name__)
 
 
 async def _check_llm_limit(user: UserProfile) -> None:
@@ -148,10 +151,15 @@ async def simulate_workflow(request: SimulateWorkflowRequest, user: ApprovedUser
                 provider = get_provider()
                 evaluation = await llm_evaluate(request.workflow, trace, provider)
                 await increment_usage(user.id, "llm_requests")
-            except (RuntimeError, EvaluationError):
+            except (RuntimeError, EvaluationError) as exc:
+                logger.warning("LLM evaluation fell back to mock: %s", exc)
                 evaluation = mock_evaluate(request.workflow, trace)
+                evaluation.fallback_reason = f"LLM evaluation unavailable ({exc})"
 
-    return SimulateWorkflowResponse(trace=trace, evaluation=evaluation)
+    run_id = await run_persistence.persist_run(
+        user.id, request.workflow, request.input, request.settings, trace, evaluation,
+    )
+    return SimulateWorkflowResponse(trace=trace, evaluation=evaluation, run_id=run_id)
 
 
 @router.post("/workflows/simulate/resume", response_model=SimulateWorkflowResponse)
@@ -159,7 +167,9 @@ async def resume_simulation_endpoint(request: ResumeSimulationRequest, user: App
     paused_info = get_paused_settings(request.trace_id)
 
     try:
-        trace = await resume_simulation(request.trace_id, request.node_id, request.decision)
+        trace = await resume_simulation(request.trace_id, request.node_id, request.decision, request.edge_target)
+    except InvalidResumeError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
     except SimulationError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
 
@@ -174,7 +184,10 @@ async def resume_simulation_endpoint(request: ResumeSimulationRequest, user: App
                     provider = get_provider()
                     evaluation = await llm_evaluate(resume_workflow, trace, provider)
                     await increment_usage(user.id, "llm_requests")
-                except (RuntimeError, EvaluationError):
+                except (RuntimeError, EvaluationError) as exc:
+                    logger.warning("LLM evaluation fell back to mock: %s", exc)
                     evaluation = mock_evaluate(resume_workflow, trace)
+                    evaluation.fallback_reason = f"LLM evaluation unavailable ({exc})"
 
-    return SimulateWorkflowResponse(trace=trace, evaluation=evaluation)
+    stored = await run_persistence.update_run(user.id, trace, evaluation)
+    return SimulateWorkflowResponse(trace=trace, evaluation=evaluation, run_id=trace.trace_id if stored else None)

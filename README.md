@@ -125,12 +125,12 @@ Open **http://localhost:5173**.
 ## Running Tests
 
 ```bash
-# Backend (255 tests)
+# Backend (295 tests)
 cd backend
 .venv/Scripts/pytest -v       # Windows
 pytest -v                     # macOS / Linux
 
-# Frontend unit tests (189 tests)
+# Frontend unit tests (203 tests)
 cd frontend
 npm test
 
@@ -197,7 +197,7 @@ The **Sample input** field accepts a JSON object that is passed to the `START` n
 | Setting | Options | Default | Notes |
 |---------|---------|---------|-------|
 | HITL nodes | Auto-approve / Pause and wait | Auto-approve | Pause suspends execution; Approve or Reject to resume |
-| CONDITION branching | Expression eval / Random / User picks | Expression eval | Evaluates the node's expression with a safe evaluator (see *CONDITION expressions*). User picks is not implemented yet and currently follows the first edge |
+| CONDITION branching | Expression eval / Random / User picks | Expression eval | Evaluates the node's expression with a safe evaluator (see *CONDITION expressions*). **User picks** pauses at each decision with 2+ branches and shows one button per branch |
 | Execution display | Animated / Instant / Manual | Animated | Manual adds a **Next Step** button to step through one node at a time |
 | Step delay | 200–2000 ms | 600 ms | Visible in Animated mode only |
 | Evaluate results | On / Off | Off | Calls LLM after a complete run to generate a quality report |
@@ -240,6 +240,20 @@ The sidebar has two tabs:
 #### HITL Pause / Resume
 
 When **HITL mode → Pause and wait** is selected, execution halts at the first HITL node. An amber banner appears at the top of the sidebar showing the node name and **Approve** / **Reject** buttons. Clicking either resumes the BFS from that point with the decision recorded in the node's output. If evaluation was requested, the Evaluation tab populates once the resumed trace completes.
+
+#### Branch choice (User picks)
+
+With **Condition branching → User picks**, the simulation pauses at every CONDITION that has two or more branches. The sidebar shows a button per branch (`label → target`); clicking one resumes the run down that branch only. A decision with a single branch does not pause. The chosen branch is recorded on the step in the trace.
+
+#### Run history
+
+Every simulation is saved to your account, including its settings, input, the workflow as it was, the trace and any evaluation. Open **History** in the toolbar to see your recent runs, **Replay** one, or **Delete** it. Replay shows the stored trace on the canvas; if the nodes in the run no longer exist in your current workflow, the workflow from the run is restored (you are asked before your current work is replaced).
+
+- Only your own runs are visible (enforced server-side and by row-level security)
+- Retention: the newest 50 runs per user, for at most 30 days (`MAX_RUNS_PER_USER`, `RUN_RETENTION_DAYS`)
+- A run larger than 500 KB (`MAX_RUN_BYTES`) is saved without per-step inputs/outputs and marked *trimmed*; if it still does not fit it is not saved
+- Saving is best-effort: if storage is unavailable the simulation still succeeds, it just does not appear in History
+- Requires the `workflow_runs` table: apply `supabase/update_202611241200.sql` (already part of `supabase/schema.sql` for new projects)
 
 #### LLM Evaluation
 
@@ -361,7 +375,7 @@ Stop-Process -Id (Get-NetTCPConnection -LocalPort 8000).OwningProcess -Force
 
 - **Simulator uses mock handlers only** — no real LLM, API, DB, or RAG calls during simulation
 - **Size limits** — a workflow may have at most 100 nodes and 300 edges, 20 KB of config per node, and request bodies are capped at 1 MB (`MAX_REQUEST_BYTES`). Larger imports are rejected with a clear message
-- **HITL resume is in-memory** — a server restart clears any paused simulations
+- **Pause/resume is in-memory** — HITL and user-pick pauses are held in the server process. Locally that is fine; on AWS Lambda a resume request can reach a different container and fail with "No paused simulation found". Fix planned (see `docs/AiFlow - Async Suite Runs Design.md` §7)
 - **Workflow persists in this browser only** — localStorage keeps your work across refreshes, but it is tied to the current browser/device; multi-device or team access requires the cloud features listed in the roadmap
 - Single LLM provider (OpenAI / LangChain wrapper)
 - No authentication or multi-user support

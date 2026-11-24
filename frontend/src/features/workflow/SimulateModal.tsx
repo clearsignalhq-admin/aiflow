@@ -231,7 +231,7 @@ export function SimulateModal({ workflow, onClose, onSimulated, onSampleInputSav
               >
                 <option value="expression">Expression eval</option>
                 <option value="random">Random</option>
-                <option value="user-pick">User picks (first)</option>
+                <option value="user-pick">User picks (pause at each decision)</option>
               </select>
             </div>
 

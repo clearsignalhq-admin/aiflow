@@ -12,6 +12,7 @@ from app.core.limiter import limiter
 from app.core.supabase_client import bootstrap_admin
 from app.api.routes import router
 from app.api.user_routes import router as user_router
+from app.api.runs_routes import router as runs_router
 
 
 @asynccontextmanager
@@ -49,3 +50,4 @@ app.add_middleware(
 
 app.include_router(router)
 app.include_router(user_router)
+app.include_router(runs_router)

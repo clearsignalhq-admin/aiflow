@@ -32,6 +32,9 @@ import {
 } from './features/workflow/WorkflowAdapter';
 import { API_BASE } from './config';
 import { formatApiError } from './utils/apiError';
+import { useAuth } from './context/AuthContext';
+import { RunHistoryModal } from './features/workflow/RunHistoryModal';
+import type { RunDetail } from './models/runs';
 import './index.css';
 
 const WORKFLOW_STORAGE_KEY = 'aiflow:workflow';
@@ -46,6 +49,13 @@ function loadPersistedWorkflow(): Workflow {
 
 export default function WorkflowApp() {
   const { workflow, setWorkflow, reset, undo, redo, canUndo, canRedo } = useWorkflowHistory(loadPersistedWorkflow);
+  const { session } = useAuth();
+  const accessToken = session?.access_token;
+  // Every API call except health needs the signed-in user's token.
+  const apiHeaders = useMemo(
+    () => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` }),
+    [accessToken],
+  );
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string>('');
@@ -267,7 +277,7 @@ export default function WorkflowApp() {
       const body = JSON.stringify({ workflow: workflowRef.current });
       const post = (path: string) => fetch(`${API_BASE}/api/workflows/${path}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: apiHeaders,
         body,
       });
       // Lint is advisory: a lint failure must never block validation.
@@ -285,7 +295,7 @@ export default function WorkflowApp() {
     } finally {
       setIsValidating(false);
     }
-  }, [showError]);
+  }, [showError, apiHeaders]);
 
   const handleOpenExamplePicker = useCallback(() => setShowExamplePicker(true), []);
 
@@ -386,7 +396,7 @@ export default function WorkflowApp() {
     try {
       const res = await fetch(`${API_BASE}/api/workflows/simulate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: apiHeaders,
         body: JSON.stringify({ workflow: workflowRef.current, input, settings: simulationSettings }),
       });
       const data = await res.json() as { trace?: ExecutionTrace; evaluation?: SimulationEvaluation; detail?: string };
@@ -395,19 +405,19 @@ export default function WorkflowApp() {
     } catch {
       showError('Could not reach backend. Is it running on port 8000?');
     }
-  }, [simulationSettings, showError, handleSimulated]);
+  }, [simulationSettings, showError, handleSimulated, apiHeaders]);
 
-  const handleResume = useCallback(async (nodeId: string, decision: 'approve' | 'reject') => {
+  const handleResume = useCallback(async (nodeId: string, decision: 'approve' | 'reject' | 'choose', edgeTarget?: string) => {
     if (!simulationTrace) return;
     try {
       const res = await fetch(`${API_BASE}/api/workflows/simulate/resume`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ trace_id: simulationTrace.trace_id, node_id: nodeId, decision }),
+        headers: apiHeaders,
+        body: JSON.stringify({ trace_id: simulationTrace.trace_id, node_id: nodeId, decision, edge_target: edgeTarget }),
       });
       const data = await res.json() as { trace?: ExecutionTrace; evaluation?: SimulationEvaluation; detail?: string };
       if (!res.ok) {
-        showError(data.detail ?? `Resume failed (${res.status})`);
+        showError(formatApiError(data, res.status));
         return;
       }
       const newTrace = data.trace;
@@ -421,7 +431,26 @@ export default function WorkflowApp() {
     } catch {
       showError('Could not reach backend. Is it running on port 8000?');
     }
-  }, [simulationTrace, simulationSettings, currentSimStep, showError]);
+  }, [simulationTrace, simulationSettings, currentSimStep, showError, apiHeaders]);
+
+  const [showRunHistory, setShowRunHistory] = useState(false);
+  const handleOpenHistory = useCallback(() => setShowRunHistory(true), []);
+
+  /** Show a stored run. If the canvas no longer contains its nodes, load the workflow it ran on. */
+  const handleReplayRun = useCallback((run: RunDetail) => {
+    const currentIds = new Set(workflowRef.current.nodes.map((n) => n.id));
+    const fitsCurrent = run.trace.steps.every((s) => currentIds.has(s.node_id));
+    if (!fitsCurrent) {
+      if (!confirmDiscard()) return;
+      cleanLoadRef.current = true;
+      reset(run.workflow);
+      setValidationState(null);
+    }
+    setSelectedNodeId(null);
+    setSelectedEdgeId(null);
+    handleSimulated(run.trace, run.evaluation, { ...run.settings, display_mode: 'instant' });
+    flash(`Replaying run of "${run.workflow_name}"${fitsCurrent ? '' : ' (workflow restored from the run)'}`);
+  }, [confirmDiscard, reset, handleSimulated, flash]);
 
   const handleClearTrace = useCallback(() => {
     setSimulationTrace(null);
@@ -490,6 +519,7 @@ export default function WorkflowApp() {
         onOpen={handleOpen}
         onOpenExamplePicker={handleOpenExamplePicker}
         onValidate={handleValidate}
+        onHistory={handleOpenHistory}
         onGenerate={handleGenerate}
         onRefine={handleRefine}
         canRefine={canRefine}
@@ -580,6 +610,10 @@ export default function WorkflowApp() {
           </div>
         </div>
       </div>
+
+      {showRunHistory && (
+        <RunHistoryModal onReplay={handleReplayRun} onClose={() => setShowRunHistory(false)} />
+      )}
 
       {statusMessage && <div className="status-bar">{statusMessage}</div>}
 

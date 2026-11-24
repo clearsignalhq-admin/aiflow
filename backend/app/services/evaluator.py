@@ -86,14 +86,9 @@ def mock_evaluate(workflow: Workflow, trace: ExecutionTrace) -> SimulationEvalua
         if finding.fix_hint and finding.fix_hint not in recommendations:
             recommendations.append(finding.fix_hint)
 
-    # Score: base 6, +1 for HITL, +1 for CONDITION, -1 if no error handling
-    score = 6
-    if has_hitl:
-        score += 1
-    if has_condition:
-        score += 1
-    if not has_condition:
-        score -= 1
+    # Placeholder heuristic: base 6, +1 for HITL, +1 with branching / -1 without error handling.
+    # It depends only on which node types exist, so it cannot rank two workflows of the same shape.
+    score = 6 + (1 if has_hitl else 0) + (1 if has_condition else -1)
     score = max(1, min(10, score))
 
     return SimulationEvaluation(
@@ -106,6 +101,7 @@ def mock_evaluate(workflow: Workflow, trace: ExecutionTrace) -> SimulationEvalua
         strengths=strengths,
         issues=issues,
         recommendations=recommendations,
+        source="mock",
     )
 
 
@@ -131,6 +127,7 @@ async def llm_evaluate(
             strengths=[str(s) for s in raw.get("strengths", [])],
             issues=[str(i) for i in raw.get("issues", [])],
             recommendations=[str(r) for r in raw.get("recommendations", [])],
+            source="llm",
         )
     except Exception as exc:
         raise EvaluationError(f"Failed to parse LLM evaluation response: {exc}") from exc

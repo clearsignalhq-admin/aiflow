@@ -50,26 +50,33 @@ Source: `docs/future/2026-11-24 AiFlow - Future Directions.md` (§4 Phase 1, adj
 
 ### Iteration 7 — Persistence and Cleanup
 
-#### Task 42 — Persist Traces and Runs `[ ]`
+#### Task 42 — Persist Traces and Runs `[x]`
 
-- [ ] Supabase tables + RLS; `schema.sql` change **and** matching `update_YYYYMMDDhhmm.sql`
-- [ ] API: list / fetch / delete runs; retention + size caps
-- [ ] UI: run history + replay
+- [x] Supabase tables + RLS; `schema.sql` change **and** matching `update_YYYYMMDDhhmm.sql`
+- [x] API: list / fetch / delete runs; retention + size caps
+- [x] UI: run history + replay
 
-#### Task 43 — Fix `user-pick` Condition Mode `[ ]`
+#### Task 43 — Fix `user-pick` Condition Mode `[x]`
 
-- [ ] Pause at CONDITION and let user pick an edge (reuse HITL pause/resume)
-- [ ] Tests incl. an end-to-end HITL pause test
+- [x] Pause at CONDITION and let user pick an edge (reuse HITL pause/resume)
+- [x] Tests incl. an end-to-end HITL pause test
 
-#### Task 44 — Spike: Async Suite Runs on Lambda `[ ]`
+#### Task 44 — Spike: Async Suite Runs on Lambda `[x]`
 
-- [ ] Design note in `docs/` (timeouts, job model, storage, usage accounting)
+- [x] Design note in `docs/` (timeouts, job model, storage, usage accounting)
 
-#### Task 45 — Cleanup and Doc Consistency `[ ]`
+#### Task 45 — Cleanup and Doc Consistency `[x]`
 
-- [ ] Fix redundant branch in `mock_evaluate`
-- [ ] Audit broad `except Exception` handlers
+- [x] Fix redundant branch in `mock_evaluate`
+- [x] Audit broad `except Exception` handlers
 - [x] BACKLOG.md / TASKS.md synced (Tasks 21–33 marked done in backlog)
+
+**Follow-ups found during this iteration** (not scheduled; details in `docs/AiFlow - Async Suite Runs Design.md` §9, tracked in `BACKLOG.md` Tasks 46–50):
+
+- Pause/resume state is in-memory, so it is unreliable on Lambda (Task 46)
+- `increment_usage` is not atomic (Task 47)
+- The simulate guard is 120 s but API Gateway cuts requests at 30 s (Task 48)
+- `App.tsx` was calling Validate / re-run / resume without an auth token. Fixed in this iteration
 
 ---
 

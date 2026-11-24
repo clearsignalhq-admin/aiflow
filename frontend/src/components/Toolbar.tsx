@@ -24,6 +24,7 @@ interface Props {
   canUndo?: boolean;
   canRedo?: boolean;
   onReport?: () => void;
+  onHistory?: () => void;
 }
 
 export function Toolbar({
@@ -48,6 +49,7 @@ export function Toolbar({
   canUndo = false,
   canRedo = false,
   onReport,
+  onHistory,
 }: Props) {
   const hasErrors = validationResult && !validationResult.valid;
   const hasWarnings = validationResult?.warnings.length;
@@ -99,6 +101,7 @@ export function Toolbar({
         </button>
         <button className="btn btn-ghost" onClick={onSimulate} title="Simulate workflow">Simulate</button>
         <button className="btn btn-ghost" onClick={onEditJson} title="Edit workflow JSON">JSON</button>
+        <button className="btn btn-ghost" onClick={onHistory} disabled={!onHistory} title="Saved simulation runs">History</button>
         <button className="btn btn-ghost" onClick={onReport} title="Export report">Report</button>
         <button
           className="btn btn-ghost"

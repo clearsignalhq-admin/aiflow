@@ -9,7 +9,7 @@ interface Props {
   settings: SimulationSettings;
   visibleStepCount: number;
   onAdvanceStep: () => void;
-  onResume: (nodeId: string, decision: 'approve' | 'reject') => void;
+  onResume: (nodeId: string, decision: 'approve' | 'reject' | 'choose', edgeTarget?: string) => void;
   onRerun: () => Promise<void>;
   onClear: () => void;
 }
@@ -154,7 +154,28 @@ export function TracePanel({ trace, evaluation, settings, visibleStepCount, onAd
 
       {isComplete && allRevealed && <TraceSummary trace={trace} />}
 
-      {pausedStep && (
+      {trace.status === 'paused' && trace.pending_choice && (
+        <div className="sim-hitl-banner sim-choice-banner" role="group" aria-label="Choose a branch">
+          <span className="sim-hitl-label">
+            ⏸ Choose the next step after{' '}
+            <strong>{trace.steps.find((s) => s.node_id === trace.pending_choice?.node_id)?.node_name ?? 'the decision'}</strong>
+          </span>
+          <div className="sim-hitl-actions">
+            {trace.pending_choice.options.map((opt) => (
+              <button
+                key={opt.target_id}
+                className="btn btn-primary"
+                onClick={() => onResume(trace.pending_choice!.node_id, 'choose', opt.target_id)}
+                title={`Continue to ${opt.target_name}`}
+              >
+                {opt.label ? `${opt.label} → ${opt.target_name}` : opt.target_name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {pausedStep && !trace.pending_choice && (
         <div className="sim-hitl-banner">
           <span className="sim-hitl-label">
             ⏸ Waiting: <strong>{pausedStep.node_name}</strong>

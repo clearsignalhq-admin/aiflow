@@ -2510,3 +2510,22 @@ body {
 .prop-json { font-family: monospace; font-size: 11px; min-height: 64px; }
 .prop-json--invalid { border-color: #f87171; }
 .prop-json-error { color: #f87171; font-size: 11px; margin-top: 3px; }
+
+/* ── Run history, branch choice, evaluation fallback ───────────────── */
+.run-history-modal { width: min(640px, 92vw); max-height: 80vh; display: flex; flex-direction: column; }
+.run-history-modal .modal-body { overflow-y: auto; }
+.run-history-list { list-style: none; margin: 8px 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.run-history-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 8px 10px; border: 1px solid var(--border-md, #333); border-radius: 6px;
+}
+.run-history-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.run-history-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.run-history-meta { font-size: 11px; opacity: 0.75; }
+.run-history-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.run-history-empty { padding: 12px 0; font-size: 12px; opacity: 0.7; }
+.sim-choice-banner .sim-hitl-actions { flex-wrap: wrap; }
+.eval-fallback {
+  margin: 6px 0; padding: 6px 8px; border-radius: 4px; font-size: 11px;
+  background: rgba(245, 158, 11, 0.12); color: #f59e0b;
+}

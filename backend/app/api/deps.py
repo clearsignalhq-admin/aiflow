@@ -51,8 +51,8 @@ async def get_current_user(
     # Refresh last_login (best-effort, don't block the request)
     try:
         await update_user_profile(user_id, {"last_login": "now()"})
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("last_login update failed for %s: %s", user_id, exc)
 
     return UserProfile(**profile)
 

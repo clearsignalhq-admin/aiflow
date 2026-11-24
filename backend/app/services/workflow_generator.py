@@ -1,8 +1,12 @@
+import logging
 import uuid
 from app.models.workflow import Workflow
 from app.providers.base import LLMProvider
 from app.schemas.requests import ChatMessage, WorkflowChatResponse
 from app.services.validator import validate_workflow
+
+
+logger = logging.getLogger(__name__)
 
 
 class WorkflowGenerationError(Exception):
@@ -51,10 +55,14 @@ def _parse_workflow_from_raw(raw_wf: dict, sample_input: dict | None) -> Workflo
         raw_wf["metadata"]["sample_input"] = sample_input
     try:
         workflow = Workflow.model_validate(raw_wf)
-    except Exception:
+    except Exception as exc:
+        logger.warning("Chat workflow discarded: invalid structure (%s)", exc)
         return None
     result = validate_workflow(workflow)
-    return workflow if result.valid else None
+    if not result.valid:
+        logger.warning("Chat workflow discarded: failed validation (%s)", "; ".join(result.errors))
+        return None
+    return workflow
 
 
 async def chat_workflow_service(

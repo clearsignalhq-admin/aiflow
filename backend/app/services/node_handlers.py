@@ -202,8 +202,9 @@ def select_condition_edges(
         return [_random.choice(outgoing_edges)], []
 
     if settings.condition_mode == ConditionMode.USER_PICK:
-        # Full pause/resume is Task 43. Default to first edge for now.
-        return outgoing_edges[:1], ["user-pick mode is not implemented yet; following the first edge."]
+        # The simulator pauses for a choice when there are 2+ branches (see simulator._run_bfs);
+        # with a single branch there is nothing to pick.
+        return outgoing_edges[:1], []
 
     # EXPRESSION mode
     expression = node.config.get("expression", "")

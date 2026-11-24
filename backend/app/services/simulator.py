@@ -20,10 +20,13 @@ from typing import Any
 
 from app.models.workflow import NodeType, Workflow, WorkflowEdge
 from app.schemas.simulation import (
+    ChoiceOption,
+    ConditionMode,
     ExecutionTrace,
     HITLMode,
     NodeExecution,
     NodeExecutionStatus,
+    PendingChoice,
     SimulationSettings,
 )
 from app.services import node_handlers
@@ -31,6 +34,10 @@ from app.services import node_handlers
 
 class SimulationError(Exception):
     pass
+
+
+class InvalidResumeError(SimulationError):
+    """The paused simulation exists, but the resume request is not valid for it."""
 
 
 # ── In-memory paused-simulation store ────────────────────────────────────────
@@ -44,6 +51,8 @@ class _PausedState:
     paused_node_id: str
     continuation_queue: list[tuple[str, dict[str, Any]]] = field(default_factory=list)
     visited: set[str] = field(default_factory=set)
+    kind: str = "hitl"                      # "hitl" | "condition"
+    choice_targets: set[str] = field(default_factory=set)   # valid edge targets for kind == "condition"
 
 
 _paused_store: dict[str, _PausedState] = {}
@@ -84,46 +93,80 @@ def get_paused_settings(trace_id: str) -> tuple[Workflow, SimulationSettings] | 
     return paused.workflow, paused.settings
 
 
-async def resume_simulation(trace_id: str, node_id: str, decision: str) -> ExecutionTrace:
+async def resume_simulation(
+    trace_id: str,
+    node_id: str,
+    decision: str,
+    edge_target: str | None = None,
+) -> ExecutionTrace:
+    """Resume a paused simulation.
+
+    HITL pauses take decision 'approve' | 'reject'. CONDITION pauses (user-pick mode)
+    take decision 'choose' plus the chosen ``edge_target`` node id.
+    """
     paused = _paused_store.get(trace_id)
     if not paused:
         raise SimulationError(f"No paused simulation found with trace_id '{trace_id}'.")
     if paused.paused_node_id != node_id:
         raise SimulationError(
-            f"Node '{node_id}' is not the paused HITL node "
+            f"Node '{node_id}' is not the paused {'condition' if paused.kind == 'condition' else 'HITL'} node "
             f"(expected '{paused.paused_node_id}')."
         )
 
+    # Validate before consuming the paused state, so a bad request can be retried.
+    if paused.kind == "condition":
+        if decision != "choose":
+            raise InvalidResumeError("This simulation is waiting for an edge choice (decision 'choose').")
+        if edge_target not in paused.choice_targets:
+            raise InvalidResumeError(f"'{edge_target}' is not one of the available branches.")
+    elif decision not in ("approve", "reject"):
+        raise InvalidResumeError("This simulation is waiting for 'approve' or 'reject'.")
+
     del _paused_store[trace_id]
-
-    hitl_output: dict[str, Any] = {
-        "approved": decision == "approve",
-        "reviewer": "human",
-        "decision": decision,
-    }
-
-    # Promote the waiting step to success now that we have the decision.
-    for step in paused.trace.steps:
-        if step.node_id == node_id and step.status == NodeExecutionStatus.WAITING:
-            step.status = NodeExecutionStatus.SUCCESS
-            step.output = hitl_output
-            step.completed_at = _now()
-            break
 
     node_by_id = {n.id: n for n in paused.workflow.nodes}
     edges_from: dict[str, list[WorkflowEdge]] = defaultdict(list)
     for edge in paused.workflow.edges:
         edges_from[edge.source].append(edge)
 
-    # Queue HITL successors (not yet visited), then the remaining BFS tail.
-    hitl_successors = [
-        (edge.target, hitl_output)
-        for edge in edges_from.get(node_id, [])
-        if edge.target not in paused.visited and edge.target in node_by_id
-    ]
-    queue: deque[tuple[str, dict[str, Any]]] = deque(
-        hitl_successors + paused.continuation_queue
-    )
+    if paused.kind == "condition":
+        waiting_step = next(
+            s for s in paused.trace.steps
+            if s.node_id == node_id and s.status == NodeExecutionStatus.WAITING
+        )
+        waiting_step.status = NodeExecutionStatus.SUCCESS
+        waiting_step.completed_at = _now()
+        chosen_label = next(
+            (o.label for o in (paused.trace.pending_choice.options if paused.trace.pending_choice else [])
+             if o.target_id == edge_target),
+            None,
+        )
+        waiting_step.warnings.append(
+            f"User chose branch '{chosen_label or edge_target}'."
+        )
+        paused.trace.pending_choice = None
+        successors = [(edge_target, waiting_step.output)]
+    else:
+        hitl_output: dict[str, Any] = {
+            "approved": decision == "approve",
+            "reviewer": "human",
+            "decision": decision,
+        }
+        # Promote the waiting step to success now that we have the decision.
+        for step in paused.trace.steps:
+            if step.node_id == node_id and step.status == NodeExecutionStatus.WAITING:
+                step.status = NodeExecutionStatus.SUCCESS
+                step.output = hitl_output
+                step.completed_at = _now()
+                break
+        # Queue HITL successors (not yet visited).
+        successors = [
+            (edge.target, hitl_output)
+            for edge in edges_from.get(node_id, [])
+            if edge.target not in paused.visited and edge.target in node_by_id
+        ]
+
+    queue: deque[tuple[str, dict[str, Any]]] = deque(successors + paused.continuation_queue)
 
     paused.trace.status = "running"
     return await _run_bfs(
@@ -214,6 +257,34 @@ async def _run_bfs(
             continue
 
         outgoing = edges_from.get(node.id, [])
+
+        # user-pick: pause at a real decision and let the caller choose the branch.
+        if node.type == NodeType.CONDITION and settings.condition_mode == ConditionMode.USER_PICK:
+            options = [e for e in outgoing if e.target in node_by_id]
+            if len(options) > 1:
+                step.status = NodeExecutionStatus.WAITING
+                step.completed_at = None
+                trace.status = "paused"
+                trace.completed_at = _now()
+                trace.pending_choice = PendingChoice(
+                    node_id=node.id,
+                    options=[
+                        ChoiceOption(target_id=e.target, target_name=node_by_id[e.target].name, label=e.condition)
+                        for e in options
+                    ],
+                )
+                _paused_store[trace.trace_id] = _PausedState(
+                    trace=trace,
+                    workflow=workflow,
+                    settings=settings,
+                    paused_node_id=node.id,
+                    continuation_queue=list(queue),
+                    visited=visited,
+                    kind="condition",
+                    choice_targets={e.target for e in options},
+                )
+                return trace
+
         if node.type == NodeType.CONDITION:
             chosen, routing_warnings = node_handlers.select_condition_edges(node, outgoing, output, settings)
             step.warnings.extend(routing_warnings)

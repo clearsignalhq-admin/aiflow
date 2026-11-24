@@ -125,8 +125,8 @@ async def insert_analytics_event(
         async with httpx.AsyncClient() as client:
             resp = await client.post(url, headers=headers, json=payload)
             resp.raise_for_status()
-    except Exception:
-        pass  # analytics is non-fatal
+    except Exception as exc:
+        logger.warning("Analytics event '%s' not recorded: %s", event, exc)  # non-fatal
 
 
 async def get_analytics_summary() -> dict[str, Any]:
@@ -218,3 +218,90 @@ async def increment_usage(user_id: str, field: str) -> None:
         async with httpx.AsyncClient() as client:
             resp = await client.post(url, headers=headers, json=payload)
             resp.raise_for_status()
+
+
+# ── Workflow runs (Task 42) ──────────────────────────────────────────────────
+# Every query is scoped by user_id; callers pass the authenticated user's id.
+
+_RUN_SUMMARY_COLUMNS = (
+    "id,workflow_id,workflow_name,status,step_count,truncated,created_at,"
+    "evaluation_score:evaluation->>score"
+)
+
+
+async def insert_run(record: dict[str, Any]) -> None:
+    url = f"{settings.supabase_url}/rest/v1/workflow_runs"
+    headers = {**_base_headers(), "Prefer": "return=minimal"}
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(url, headers=headers, json=record)
+        resp.raise_for_status()
+
+
+async def update_run(user_id: str, run_id: str, patch: dict[str, Any]) -> bool:
+    url = f"{settings.supabase_url}/rest/v1/workflow_runs"
+    params = {"id": f"eq.{run_id}", "user_id": f"eq.{user_id}"}
+    async with httpx.AsyncClient() as client:
+        resp = await client.patch(url, headers=_base_headers(), params=params, json=patch)
+        resp.raise_for_status()
+        return bool(resp.json())
+
+
+async def list_runs(user_id: str, limit: int, offset: int) -> list[dict[str, Any]]:
+    url = f"{settings.supabase_url}/rest/v1/workflow_runs"
+    params = {
+        "user_id": f"eq.{user_id}",
+        "select": _RUN_SUMMARY_COLUMNS,
+        "order": "created_at.desc",
+        "limit": str(limit),
+        "offset": str(offset),
+    }
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(url, headers=_base_headers(), params=params)
+        resp.raise_for_status()
+        return resp.json()
+
+
+async def get_run(user_id: str, run_id: str) -> Optional[dict[str, Any]]:
+    url = f"{settings.supabase_url}/rest/v1/workflow_runs"
+    params = {"id": f"eq.{run_id}", "user_id": f"eq.{user_id}", "select": "*", "limit": "1"}
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(url, headers=_base_headers(), params=params)
+        resp.raise_for_status()
+        rows = resp.json()
+        return rows[0] if rows else None
+
+
+async def delete_run(user_id: str, run_id: str) -> bool:
+    url = f"{settings.supabase_url}/rest/v1/workflow_runs"
+    params = {"id": f"eq.{run_id}", "user_id": f"eq.{user_id}"}
+    async with httpx.AsyncClient() as client:
+        resp = await client.delete(url, headers=_base_headers(), params=params)
+        resp.raise_for_status()
+        return bool(resp.json())
+
+
+async def prune_runs(user_id: str, keep: int, older_than_iso: Optional[str]) -> None:
+    """Delete a user's runs older than ``older_than_iso`` and any beyond the newest ``keep``."""
+    url = f"{settings.supabase_url}/rest/v1/workflow_runs"
+    headers = {**_base_headers(), "Prefer": "return=minimal"}
+    async with httpx.AsyncClient() as client:
+        if older_than_iso:
+            resp = await client.delete(
+                url, headers=headers,
+                params={"user_id": f"eq.{user_id}", "created_at": f"lt.{older_than_iso}"},
+            )
+            resp.raise_for_status()
+        if keep > 0:
+            resp = await client.get(
+                url, headers=_base_headers(),
+                params={"user_id": f"eq.{user_id}", "select": "id", "order": "created_at.desc",
+                        "offset": str(keep), "limit": "1000"},
+            )
+            resp.raise_for_status()
+            stale = [r["id"] for r in resp.json()]
+            if stale:
+                resp = await client.delete(
+                    url, headers=headers,
+                    params={"user_id": f"eq.{user_id}", "id": f"in.({','.join(stale)})"},
+                )
+                resp.raise_for_status()

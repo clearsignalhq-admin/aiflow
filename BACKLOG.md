@@ -504,7 +504,7 @@ Depends on Task 40 (A4).
 - Deterministic (seeded) so runs are comparable
 - CONDITION expressions now take real branches in simulation
 
-### Task 42 — Persist Traces and Runs `[ ]`
+### Task 42 — Persist Traces and Runs `[x]`
 
 Prerequisite for most later evaluation work (A6).
 
@@ -513,7 +513,7 @@ Prerequisite for most later evaluation work (A6).
 - API to list / fetch / delete runs; retention and size caps
 - UI: run history list; replay a stored trace on the canvas
 
-### Task 43 — Fix `user-pick` Condition Mode `[ ]`
+### Task 43 — Fix `user-pick` Condition Mode `[x]`
 
 Currently returns the first edge silently (A5).
 
@@ -521,7 +521,7 @@ Currently returns the first edge silently (A5).
 - pytest + e2e covering the pause/resume path
 - Also add one test proving the HITL pause path end to end (§8.2)
 
-### Task 44 — Spike: Async Suite Runs on Lambda `[ ]`
+### Task 44 — Spike: Async Suite Runs on Lambda `[x]`
 
 Design-only, before any dataset/suite work (§8.3 #4).
 
@@ -529,11 +529,46 @@ Design-only, before any dataset/suite work (§8.3 #4).
 - Decide storage (ties to Task 42) and usage accounting for suite runs
 - Output: a short design note in `docs/`; no production code
 
-### Task 45 — Cleanup and Doc Consistency `[ ]`
+### Task 45 — Cleanup and Doc Consistency `[x]`
 
 - Fix the redundant `+1`/`-1` branch in `mock_evaluate` (noting it remains a placeholder)
 - Audit broad `except Exception` handlers in `simulator.py` and providers so failures reach the trace
 - Keep BACKLOG.md and TASKS.md in sync going forward (done 2026-11-24 for Tasks 21–33)
+
+### Follow-ups from the async-suite design spike (Task 44)
+
+Source: `docs/AiFlow - Async Suite Runs Design.md` §9. Not scheduled.
+
+### Task 46 — Durable Pause/Resume `[ ]`
+
+HITL and user-pick pauses live in process memory, so on Lambda a resume often fails (design note §1 #5, §7).
+
+- Persist the continuation (queue + visited set + pause kind/choices) with the run row from Task 42
+- Rebuild the paused state from the database on resume; keep the in-memory store only as a cache
+- Schema change follows the migration convention (`schema.sql` + `update_YYYYMMDDhhmm.sql`)
+- pytest: pause, drop the in-memory store, resume still works
+
+### Task 47 — Atomic Usage Counter `[ ]`
+
+`increment_usage` reads then writes, so concurrent requests undercount (design note §1 #7, §5).
+
+- SQL function `increment_usage(user, field, by int)` using `insert … on conflict do update set x = x + by`; call it via Supabase RPC
+- Replace the read-modify-write in `supabase_client.py`; supports increments greater than 1 for suites
+
+### Task 48 — Align Simulation Timeout With the Gateway `[ ]`
+
+- Lower the `asyncio.wait_for` guard in `/workflows/simulate` from 120 s to ≤ 25 s (API Gateway HTTP API cuts requests at 30 s)
+- Return a clear 504 body; consider Lambda `Timeout` in `template.yaml` (currently 60 s)
+
+### Task 49 — Benchmark Mock Simulation `[ ]`
+
+- Measure mock-mode simulation of the complex examples on a Lambda-sized container (p50/p95 over 100 cases)
+- Use the result to fix the synchronous-suite cutoff
+
+### Task 50 — Suites: Data Model, Job API, Client-Driven Executor `[ ]`
+
+- Tables, job API and Option A executor from the design note (§3–§5)
+- Depends on Tasks 46–49
 
 ---
 
