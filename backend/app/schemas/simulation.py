@@ -55,6 +55,7 @@ class NodeExecution(BaseModel):
     input: Any = None
     output: Any = None
     error: Optional[str] = None
+    warnings: list[str] = Field(default_factory=list)
 
 
 class ExecutionTrace(BaseModel):

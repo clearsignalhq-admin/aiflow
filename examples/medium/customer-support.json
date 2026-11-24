@@ -50,7 +50,7 @@
       "name": "Route Decision",
       "position": { "x": 350, "y": 720 },
       "config": {
-        "expression": "classify_request.complexity == \"complex\""
+        "expression": "\"complex\" if input.complexity == \"complex\" else \"simple\""
       }
     },
     {

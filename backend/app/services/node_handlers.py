@@ -13,6 +13,7 @@ import random as _random
 from typing import Any
 
 from app.models.workflow import NodeType, WorkflowNode
+from app.services import expressions
 from app.schemas.simulation import SimulationSettings, LLMMode
 
 
@@ -142,40 +143,57 @@ def _handle_unknown(
 def select_condition_edges(
     node: WorkflowNode,
     outgoing_edges: list,
-    output_data: dict[str, Any],
+    input_data: dict[str, Any],
     settings: SimulationSettings,
-) -> list:
-    """Return the subset of outgoing_edges to follow after a CONDITION node."""
+) -> tuple[list, list[str]]:
+    """Return ``(edges_to_follow, warnings)`` for a CONDITION node.
+
+    Routing contract (expression mode):
+      1. ``config.expression`` is evaluated by the safe evaluator in
+         ``app.services.expressions`` against the node's input fields (plus
+         ``input`` / ``output`` aliases for the whole dict).
+      2. The result is matched, case-insensitively, against the outgoing edges'
+         ``condition`` labels. ``True`` matches ``true``/``yes``, ``False``
+         matches ``false``/``no``; any other value matches its string form.
+      3. If nothing matches, edges labelled ``else``/``default``/``otherwise`` are used.
+      4. If the expression is missing, fails, or matches no label, all outgoing
+         edges are followed (so the whole graph is explored) and a warning is
+         returned for the trace; failures are never silent.
+    """
     from app.schemas.simulation import ConditionMode
 
     if not outgoing_edges:
-        return []
+        return [], []
 
     if settings.condition_mode == ConditionMode.RANDOM:
-        return [_random.choice(outgoing_edges)]
+        return [_random.choice(outgoing_edges)], []
 
     if settings.condition_mode == ConditionMode.USER_PICK:
-        # Full pause/resume is Task 22. Default to first edge for now.
-        return outgoing_edges[:1]
+        # Full pause/resume is Task 43. Default to first edge for now.
+        return outgoing_edges[:1], ["user-pick mode is not implemented yet; following the first edge."]
 
-    # EXPRESSION mode: try to evaluate config.expression against data context.
-    # With mock data the expression will usually fail — fall back to all edges
-    # so the full graph is explored.
+    # EXPRESSION mode
     expression = node.config.get("expression", "")
-    if expression:
-        try:
-            result = eval(expression, {"__builtins__": {}}, output_data)  # noqa: S307
-            # Map truthy/falsy result to edge conditions
-            truthy_labels = {"true", "yes", "complex", "1"}
-            falsy_labels = {"false", "no", "simple", "0"}
-            if result:
-                conditioned = [e for e in outgoing_edges if str(e.condition).lower() in truthy_labels]
-            else:
-                conditioned = [e for e in outgoing_edges if str(e.condition).lower() in falsy_labels]
-            if conditioned:
-                return conditioned
-        except Exception:
-            pass
+    if not isinstance(expression, str) or not expression.strip():
+        return outgoing_edges, ["No expression configured; following all edges."]
 
-    # Fallback: follow all outgoing edges (explores full graph with mock data)
-    return outgoing_edges
+    context = {**input_data, "input": input_data, "output": input_data}
+    try:
+        result = expressions.evaluate(expression, context)
+    except expressions.ExpressionError as exc:
+        return outgoing_edges, [f"Expression could not be evaluated ({exc}); following all edges."]
+
+    candidates = expressions.label_candidates(result)
+    matched = [e for e in outgoing_edges if expressions.normalise_label(e.condition) in candidates]
+    if not matched:
+        matched = [
+            e for e in outgoing_edges
+            if expressions.normalise_label(e.condition) in expressions.DEFAULT_LABELS
+        ]
+    if matched:
+        return matched, []
+
+    labels = sorted({str(e.condition) for e in outgoing_edges if e.condition})
+    return outgoing_edges, [
+        f"Expression result {result!r} matches no edge label ({', '.join(labels) or 'none set'}); following all edges."
+    ]

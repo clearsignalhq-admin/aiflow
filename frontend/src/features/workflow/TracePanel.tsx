@@ -50,6 +50,9 @@ function StepRow({ step }: { step: NodeExecution }) {
       {open && (
         <div className="trace-step-detail">
           {step.error && <div className="trace-step-error">Error: {step.error}</div>}
+          {step.warnings?.map((w, i) => (
+            <div key={i} className="trace-step-warning">⚠ {w}</div>
+          ))}
           <div className="trace-step-json-label">Input</div>
           <pre className="trace-step-json">{JSON.stringify(step.input, null, 2)}</pre>
           {step.output !== undefined && step.output !== null && (

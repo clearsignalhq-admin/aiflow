@@ -41,7 +41,7 @@
       "name": "Critical Shortage?",
       "position": { "x": 400, "y": 560 },
       "config": {
-        "expression": "calc_shortfalls.shortage_severity == \"critical\""
+        "expression": "\"critical\" if input.shortage_severity == \"critical\" else \"non-critical\""
       }
     },
     {

@@ -28,7 +28,7 @@
       "name": "Route by Sentiment",
       "position": { "x": 350, "y": 400 },
       "config": {
-        "expression": "classify.sentiment == \"positive\""
+        "expression": "\"positive\" if input.sentiment == \"positive\" else \"negative\""
       }
     },
     {

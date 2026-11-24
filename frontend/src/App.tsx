@@ -28,6 +28,7 @@ import {
   autoLayoutWorkflow,
 } from './features/workflow/WorkflowAdapter';
 import { API_BASE } from './config';
+import { formatApiError } from './utils/apiError';
 import './index.css';
 
 const WORKFLOW_STORAGE_KEY = 'aiflow:workflow';
@@ -259,6 +260,11 @@ export default function WorkflowApp() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ workflow: workflowRef.current }),
       });
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => null) as unknown;
+        showError(formatApiError(errBody, res.status));
+        return;
+      }
       const data = await res.json() as ValidationResult;
       setValidationState({ result: data, nodeCount: workflowRef.current.nodes.length, edgeCount: workflowRef.current.edges.length });
     } catch {
@@ -363,7 +369,7 @@ export default function WorkflowApp() {
         body: JSON.stringify({ workflow: workflowRef.current, input, settings: simulationSettings }),
       });
       const data = await res.json() as { trace?: ExecutionTrace; evaluation?: SimulationEvaluation; detail?: string };
-      if (!res.ok || !data.trace) { showError(data.detail ?? `Re-run failed (${res.status})`); return; }
+      if (!res.ok || !data.trace) { showError(data.detail ? formatApiError(data, res.status) : `Re-run failed (${res.status})`); return; }
       handleSimulated(data.trace, data.evaluation ?? null, simulationSettings);
     } catch {
       showError('Could not reach backend. Is it running on port 8000?');

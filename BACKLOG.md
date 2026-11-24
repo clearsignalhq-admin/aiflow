@@ -449,16 +449,16 @@ Source: `docs/future/2026-11-24 AiFlow - Future Directions.md` — §4 Phase 1 a
 
 Order matters: 36 and 37 are done together (the condition contract changes what the evaluator must support).
 
-### Task 36 — Safe Expression Evaluator `[ ]`
+### Task 36 — Safe Expression Evaluator `[x]`
 
 Replace `eval()` in `node_handlers.select_condition_edges` (Future Directions A1, §8.1). Highest-priority item.
 
 - Use a safe evaluator (`simpleeval` / `asteval` / whitelist AST walker); no attribute access, no calls beyond an allow-list
 - Evaluation errors are **reported in the trace** (node output / warning) instead of silently falling through to "follow all edges"
 - pytest: normal expressions, missing fields, and escape attempts (`().__class__.__mro__...`, `__import__`, attribute chains, huge expressions)
-- Optional: "test this expression" box in the CONDITION properties panel against sample data
+- Optional (deferred, not done): "test this expression" box in the CONDITION properties panel against sample data
 
-### Task 37 — Edge-Condition Contract `[ ]`
+### Task 37 — Edge-Condition Contract `[x]`
 
 Define what `edge.condition` means and make every layer agree (§8.2, §8.3 #2).
 
@@ -468,7 +468,7 @@ Define what `edge.condition` means and make every layer agree (§8.2, §8.3 #2).
 - Validator warns when a CONDITION's outgoing edges cannot be matched by its expression
 - Update `docs/` specs and README accordingly
 
-### Task 38 — Request Size Limits `[ ]`
+### Task 38 — Request Size Limits `[x]`
 
 No limits exist on `Workflow.nodes`, `edges`, or node `config` (§8.3 #1).
 

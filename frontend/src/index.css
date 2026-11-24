@@ -1796,6 +1796,12 @@ body {
   margin-bottom: 6px;
 }
 
+.trace-step-warning {
+  color: #f59e0b;
+  font-size: 11px;
+  margin-bottom: 6px;
+}
+
 .trace-step-json-label {
   font-size: 10px;
   color: var(--text-3);

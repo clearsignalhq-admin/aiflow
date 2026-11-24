@@ -10,6 +10,7 @@ export interface NodeExecution {
   input?: unknown;
   output?: unknown;
   error?: string;
+  warnings?: string[];
 }
 
 export interface ExecutionTrace {

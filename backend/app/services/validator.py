@@ -1,5 +1,6 @@
 from app.models.workflow import Workflow, NodeType
 from app.schemas.requests import ValidationResult
+from app.services import expressions
 
 # Required config keys per node type
 _REQUIRED_CONFIG: dict[NodeType, list[str]] = {
@@ -64,4 +65,50 @@ def validate_workflow(workflow: Workflow) -> ValidationResult:
         if node.type not in (NodeType.START, NodeType.END) and node.id not in connected_ids:
             warnings.append(f"Node '{node.name}' ({node.id}) is not connected to any edge.")
 
+    warnings.extend(_condition_warnings(workflow))
+
     return ValidationResult(valid=len(errors) == 0, errors=errors, warnings=warnings)
+
+
+def _condition_warnings(workflow: Workflow) -> list[str]:
+    """Check each CONDITION node's expression and edge labels against the routing contract."""
+    warnings: list[str] = []
+    for node in workflow.nodes:
+        if node.type != NodeType.CONDITION:
+            continue
+        outgoing = [e for e in workflow.edges if e.source == node.id]
+        label = f"Condition '{node.name}'"
+
+        unlabelled = [e for e in outgoing if not (e.condition or "").strip()]
+        if unlabelled:
+            warnings.append(f"{label} has {len(unlabelled)} outgoing edge(s) without a condition label.")
+
+        expression = node.config.get("expression")
+        if not isinstance(expression, str) or not expression.strip():
+            continue  # already reported as missing config
+
+        problem = expressions.check_syntax(expression)
+        if problem:
+            warnings.append(f"{label} has an invalid expression: {problem}")
+            continue
+
+        results = expressions.possible_results(expression)
+        if results is None:
+            continue  # result values unknown statically
+        edge_labels = {expressions.normalise_label(e.condition) for e in outgoing if (e.condition or "").strip()}
+        if not edge_labels:
+            continue
+        has_default = bool(edge_labels & expressions.DEFAULT_LABELS)
+
+        produced: set[str] = set()
+        for value in results:
+            candidates = expressions.label_candidates(value)
+            produced |= candidates
+            if not (candidates & edge_labels) and not has_default:
+                warnings.append(
+                    f"{label}: expression can return {value!r} but no outgoing edge is labelled "
+                    f"{' / '.join(sorted(candidates))}."
+                )
+        for edge_label in sorted(edge_labels - produced - expressions.DEFAULT_LABELS):
+            warnings.append(f"{label}: edge label '{edge_label}' can never be selected by the expression.")
+    return warnings

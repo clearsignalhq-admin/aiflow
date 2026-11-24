@@ -91,7 +91,7 @@ export const NODE_DEFINITIONS: Record<NodeTypeVal, NodeDefinition> = {
     color: '#f59e0b',
     textColor: '#fff',
     configFields: [
-      { key: 'expression', label: 'Expression', type: 'textarea', placeholder: 'output.intent == "complex"' },
+      { key: 'expression', label: 'Expression', type: 'textarea', placeholder: '"complex" if input.intent == "complex" else "simple"' },
     ],
   },
   [NodeType.HITL]: {

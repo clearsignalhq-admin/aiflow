@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     supabase_service_role_key: str = ""
     supabase_jwt_secret: str = ""
 
+    # Request body size limit in bytes (413 above this)
+    max_request_bytes: int = 1_000_000
+
     # Demo usage limits
     demo_max_executions_per_day: int = 10
     demo_max_llm_requests_per_day: int = 20

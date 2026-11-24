@@ -215,7 +215,8 @@ async def _run_bfs(
 
         outgoing = edges_from.get(node.id, [])
         if node.type == NodeType.CONDITION:
-            chosen = node_handlers.select_condition_edges(node, outgoing, output, settings)
+            chosen, routing_warnings = node_handlers.select_condition_edges(node, outgoing, output, settings)
+            step.warnings.extend(routing_warnings)
         else:
             chosen = outgoing
 

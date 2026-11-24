@@ -39,7 +39,7 @@
       "name": "Premium or Basic?",
       "position": { "x": 400, "y": 560 },
       "config": {
-        "expression": "assess_tier.tier == \"premium\""
+        "expression": "\"premium\" if input.tier == \"premium\" else \"basic\""
       }
     },
     {

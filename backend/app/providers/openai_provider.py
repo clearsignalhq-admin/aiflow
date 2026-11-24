@@ -45,7 +45,10 @@ Node types (use the exact string):
   API        — HTTP call. Config: { "method": "GET|POST|PUT|PATCH|DELETE", "url": "<url>" }
   DATABASE   — DB query. Config: { "type": "postgresql", "connection": "env:DB_URL", "query": "<SQL>" }
   RAG        — Retrieval. Config: { "knowledgeBase": "<name>", "topK": 5 }
-  CONDITION  — Decision. Config: { "expression": "<condition expression>" }
+  CONDITION  — Decision. Config: { "expression": "<expression>" }
+               Expression: a simple Python-style expression over the previous node's output fields via `input`,
+               e.g. `"complex" if input.complexity == "complex" else "simple"` or `input.amount > 5000`.
+               Allowed: comparisons, and/or/not, + - * / %, in, if/else, literals. No function calls. Do NOT use && || !.
   HITL       — Human review. Config: { "instructions": "<review instructions>" }
   TRANSFORM  — Transform. Config: { "description": "<what the transformation does>" }
 
@@ -53,7 +56,9 @@ Layout rules:
   - Main path nodes: x=300, y starts at 100 and increments by 160 per level.
   - CONDITION branches: left branch x=150, right branch x=450.
   - After branches converge, resume main path at x=300.
-  - Edges from CONDITION nodes must include a "condition" label.
+  - Edges from CONDITION nodes must include a "condition" label. The label must equal a value the expression can return
+    (e.g. the strings "complex"/"simple"), or be "true"/"false" (or "yes"/"no") when the expression is a comparison.
+    An edge labelled "else" is taken when no other label matches.
 
 Constraints:
   - Every node has a unique, descriptive kebab-case id.

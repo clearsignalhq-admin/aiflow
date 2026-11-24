@@ -185,7 +185,7 @@ The **Sample input** field accepts a JSON object that is passed to the `START` n
 | Setting | Options | Default | Notes |
 |---------|---------|---------|-------|
 | HITL nodes | Auto-approve / Pause and wait | Auto-approve | Pause suspends execution; Approve or Reject to resume |
-| CONDITION branching | Expression eval / Random / User picks | Expression eval | Expression tries to evaluate the node's expression string |
+| CONDITION branching | Expression eval / Random / User picks | Expression eval | Evaluates the node's expression with a safe evaluator (see *CONDITION expressions*). User picks is not implemented yet and currently follows the first edge |
 | Execution display | Animated / Instant / Manual | Animated | Manual adds a **Next Step** button to step through one node at a time |
 | Step delay | 200–2000 ms | 600 ms | Visible in Animated mode only |
 | Evaluate results | On / Off | Off | Calls LLM after a complete run to generate a quality report |
@@ -203,9 +203,18 @@ Every node type returns a deterministic mock output so you can explore workflows
 | `API` | `{ status: 200, data: { message: "Mock API response" } }` |
 | `DATABASE` | `{ rows: [{ id: 1, data: "Mock row" }], count: 1 }` |
 | `RAG` | `{ documents: [{ content: "Mock document", score: 0.95 }] }` |
-| `CONDITION` | Evaluates the node's `expression` field; falls back to passing all edges |
+| `CONDITION` | Evaluates the node's `expression` and routes by edge label; if it cannot, follows all edges and records a warning on the step |
 | `HITL` | `{ approved: true, reviewer: "auto" }` (auto-approve) or suspends (pause mode) |
 | `TRANSFORM` | Returns input data unchanged |
+
+#### CONDITION expressions
+
+Expressions use a small, safe Python-style language. They are parsed and checked against a whitelist (never run as Python), so function calls, attribute tricks (`__class__`), comprehensions, f-strings and `**` are rejected.
+
+- **Data:** the fields of the node's input are available as names, plus `input` / `output` for the whole object: `input.amount > 5000`, `input["status"] == "open"`, `items[0] == 1`
+- **Operators:** `== != < <= > >= in not in`, `and or not`, `+ - * / // %`, `x if cond else y`, string/number/`True`/`False`/`None` literals (`true`/`false`/`null` also work). JavaScript operators such as `&&`, `||`, `!` are not supported
+- **Routing:** the result is matched, case-insensitively, against the outgoing edges' condition labels. `True` matches `true`/`yes`, `False` matches `false`/`no`; any other value matches its text, so `"complex" if input.score > 5 else "simple"` routes to the edge labelled `complex` or `simple`. An edge labelled `else` (or `default` / `otherwise`) is the fallback
+- **When it cannot route** (missing field, invalid expression, no matching label) the simulator follows all edges and shows a warning on the CONDITION step in the trace. Validate also warns about unlabelled edges, invalid expressions, and labels the expression can never produce
 
 #### Simulation Sidebar
 
@@ -337,6 +346,7 @@ Stop-Process -Id (Get-NetTCPConnection -LocalPort 8000).OwningProcess -Force
 ## Current Limitations
 
 - **Simulator uses mock handlers only** — no real LLM, API, DB, or RAG calls during simulation
+- **Size limits** — a workflow may have at most 100 nodes and 300 edges, 20 KB of config per node, and request bodies are capped at 1 MB (`MAX_REQUEST_BYTES`). Larger imports are rejected with a clear message
 - **HITL resume is in-memory** — a server restart clears any paused simulations
 - **Workflow persists in this browser only** — localStorage keeps your work across refreshes, but it is tied to the current browser/device; multi-device or team access requires the cloud features listed in the roadmap
 - Single LLM provider (OpenAI / LangChain wrapper)

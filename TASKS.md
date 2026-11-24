@@ -6,27 +6,27 @@ Source: `docs/future/2026-11-24 AiFlow - Future Directions.md` (§4 Phase 1, adj
 
 ### Iteration 5 — Safety and Contracts
 
-#### Task 36 — Safe Expression Evaluator `[ ]`
+#### Task 36 — Safe Expression Evaluator `[x]`
 
-- [ ] Replace `eval()` in `select_condition_edges` with a safe evaluator
-- [ ] Report evaluation errors in the trace (no silent fall-through)
-- [ ] pytest incl. escape attempts
-- [ ] (optional) "test expression" box in CONDITION properties panel
+- [x] Replace `eval()` in `select_condition_edges` with a safe evaluator
+- [x] Report evaluation errors in the trace (no silent fall-through)
+- [x] pytest incl. escape attempts
+- [ ] (optional, deferred) "test expression" box in CONDITION properties panel
 
-#### Task 37 — Edge-Condition Contract `[ ]`
+#### Task 37 — Edge-Condition Contract `[x]`
 
-- [ ] Decide + document expression language and result → edge mapping
-- [ ] Remove/document hardcoded label vocabulary
-- [ ] Align generator prompt, validator, simulator, properties panel
-- [ ] Validator warns on unmatchable CONDITION edges
-- [ ] Update docs/README
+- [x] Decide + document expression language and result → edge mapping
+- [x] Remove/document hardcoded label vocabulary
+- [x] Align generator prompt, validator, simulator, properties panel
+- [x] Validator warns on unmatchable CONDITION edges
+- [x] Update docs/README
 
-#### Task 38 — Request Size Limits `[ ]`
+#### Task 38 — Request Size Limits `[x]`
 
-- [ ] Limits on nodes / edges / config size (all workflow endpoints)
-- [ ] Request body size limit
-- [ ] UI error messages + oversized import rejected
-- [ ] pytest per limit
+- [x] Limits on nodes / edges / config size (all workflow endpoints)
+- [x] Request body size limit
+- [x] UI error messages + oversized import rejected
+- [x] pytest per limit
 
 ### Iteration 6 — Signal
 

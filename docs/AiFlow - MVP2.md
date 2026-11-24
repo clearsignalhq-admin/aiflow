@@ -71,7 +71,7 @@ All four behavior dimensions are user-configurable in the Simulation Settings pa
 | Mode | Description |
 |------|-------------|
 | **User picks** | Simulation pauses at CONDITION node, user selects which outgoing edge to follow. |
-| **Expression eval** | Evaluates the edge `condition` string as a simple JS expression against the current data context. Edges with no condition or a truthy result are eligible; first match wins. |
+| **Expression eval** | Evaluates the CONDITION node's `expression` (a safe Python-style expression, not JS) against the node's input data and follows the edges whose `condition` label matches the result (`true`/`yes`, `false`/`no`, or the returned text; `else` is the fallback). On failure all edges are followed and a warning is recorded. *(Updated 2026-11-24, Tasks 36–37; see README "CONDITION expressions".)* |
 | **Random** | Selects a random outgoing edge (useful for probabilistic exploration). |
 
 ### 2.4 Execution Display

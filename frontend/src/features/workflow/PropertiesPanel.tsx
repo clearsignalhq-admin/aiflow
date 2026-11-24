@@ -29,7 +29,7 @@ export function PropertiesPanel({ workflow, selectedNodeId, selectedEdgeId, onNa
           Edge
           <HelpIcon
             title="Edge Properties"
-            body="Condition label: the routing key used by Condition nodes. The simulation engine matches this label against the CONDITION node's expression result to decide which branch to follow.\n\nNotes: a free-text annotation for documentation purposes — not used during simulation."
+            body="Condition label: the routing key used by Condition nodes. The simulation engine matches this label against the result of the CONDITION node's expression to decide which branch to follow (true/yes or false/no for comparisons; otherwise the returned text, e.g. complex; else is the fallback).\n\nNotes: a free-text annotation for documentation purposes — not used during simulation."
           />
         </div>
         <div className="prop-group">
@@ -43,7 +43,7 @@ export function PropertiesPanel({ workflow, selectedNodeId, selectedEdgeId, onNa
             Condition label
             <HelpIcon
               title="Condition Label"
-              body={'Set this on edges that leave a Condition node. The simulator matches the node\'s expression result against these labels.\n\nCommon values: true / false, yes / no, complex / simple, approved / rejected.\n\nLeave blank on non-conditional edges.'}
+              body={'Set this on edges that leave a Condition node. The simulator matches the node\'s expression result against these labels (case-insensitive). A comparison such as input.amount > 5000 routes to the edge labelled true/yes or false/no. An expression that returns text, such as "complex" if input.x > 1 else "simple", routes to the edge with that label. An edge labelled else is used when nothing else matches.\n\nLeave blank on non-conditional edges.'}
             />
           </label>
           <input

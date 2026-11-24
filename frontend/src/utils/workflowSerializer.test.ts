@@ -3,6 +3,9 @@ import {
   serializeWorkflow,
   deserializeWorkflow,
   createDefaultWorkflow,
+  MAX_NODES,
+  MAX_EDGES,
+  MAX_IMPORT_BYTES,
 } from './workflowSerializer';
 import { NodeType } from '../models/workflow';
 import type { Workflow } from '../models/workflow';
@@ -78,5 +81,31 @@ describe('deserializeWorkflow error handling', () => {
       nodes: [{ id: 'n1', type: 'BOGUS' as NodeType, name: 'Bad', position: { x: 0, y: 0 }, config: {} }],
     };
     expect(() => deserializeWorkflow(JSON.stringify(data))).toThrow('unknown node type');
+  });
+});
+
+describe('deserializeWorkflow size limits', () => {
+  const base = () => createDefaultWorkflow();
+
+  it('rejects files larger than the import limit', () => {
+    expect(() => deserializeWorkflow(' '.repeat(MAX_IMPORT_BYTES + 1))).toThrow('too large');
+  });
+
+  it('rejects too many nodes', () => {
+    const wf = base();
+    wf.nodes = Array.from({ length: MAX_NODES + 1 }, (_, i) => ({ ...wf.nodes[0], id: `n${i}` }));
+    expect(() => deserializeWorkflow(JSON.stringify(wf))).toThrow('too many nodes');
+  });
+
+  it('rejects too many edges', () => {
+    const wf = base();
+    wf.edges = Array.from({ length: MAX_EDGES + 1 }, () => ({ source: 'start', target: 'end' }));
+    expect(() => deserializeWorkflow(JSON.stringify(wf))).toThrow('too many edges');
+  });
+
+  it('accepts a workflow at the limits', () => {
+    const wf = base();
+    wf.nodes = Array.from({ length: MAX_NODES }, (_, i) => ({ ...wf.nodes[0], id: `n${i}` }));
+    expect(() => deserializeWorkflow(JSON.stringify(wf))).not.toThrow();
   });
 });

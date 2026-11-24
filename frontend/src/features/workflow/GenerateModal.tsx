@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import type { Workflow } from '../../models/workflow';
 import { API_BASE } from '../../config';
+import { formatApiError } from '../../utils/apiError';
 import { useAuth } from '../../context/AuthContext';
 
 interface Props {
@@ -69,11 +70,11 @@ export function GenerateModal({ currentWorkflow, onClose, onGenerated }: Props) 
         status?: string;
         reply?: string;
         workflow?: Workflow;
-        detail?: string;
+        detail?: unknown;
       };
 
       if (!res.ok) {
-        setError(data.detail ?? `Server error (${res.status})`);
+        setError(formatApiError(data, res.status));
         return;
       }
 

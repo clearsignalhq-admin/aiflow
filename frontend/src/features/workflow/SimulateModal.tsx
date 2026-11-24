@@ -4,6 +4,7 @@ import type { ExecutionTrace, SimulationEvaluation, SimulationSettings } from '.
 import { HelpIcon } from '../../components/HelpIcon';
 import { scaffoldSampleInput } from '../../utils/scaffoldInput';
 import { API_BASE } from '../../config';
+import { formatApiError } from '../../utils/apiError';
 import { useAuth } from '../../context/AuthContext';
 
 interface Props {
@@ -109,10 +110,10 @@ export function SimulateModal({ workflow, onClose, onSimulated, onSampleInputSav
         body: JSON.stringify({ workflow, input: parsed, settings }),
       });
 
-      const data = await res.json() as { trace?: ExecutionTrace; evaluation?: SimulationEvaluation; detail?: string };
+      const data = await res.json() as { trace?: ExecutionTrace; evaluation?: SimulationEvaluation; detail?: unknown };
 
       if (!res.ok) {
-        setError(data.detail ?? `Server error (${res.status})`);
+        setError(formatApiError(data, res.status));
         return;
       }
 

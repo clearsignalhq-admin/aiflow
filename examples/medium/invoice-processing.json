@@ -42,7 +42,7 @@
       "name": "Approval Required?",
       "position": { "x": 400, "y": 560 },
       "config": {
-        "expression": "normalise.amount_usd > 5000"
+        "expression": "\"needs-approval\" if input.amount_usd > 5000 else \"auto-approve\""
       }
     },
     {
