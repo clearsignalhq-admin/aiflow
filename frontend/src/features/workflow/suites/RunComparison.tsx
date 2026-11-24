@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { CaseComparison, RunComparison as Comparison, RunSide } from '../../../models/suites';
 import { percent } from './format';
+import { WorkflowDiffView } from '../WorkflowDiffView';
 
 interface Props {
   comparison: Comparison;
@@ -37,11 +38,6 @@ function SideLine({ label, side }: { label: string; side: RunSide }) {
       {side.llm_mode === 'real' ? ` · real model, ${side.llm_calls} calls` : ' · simulated'}
     </div>
   );
-}
-
-function show(value: unknown): string {
-  if (value === null || value === undefined) return '(none)';
-  return typeof value === 'string' ? value : JSON.stringify(value);
 }
 
 function CaseRow({ c, nodeNames }: { c: CaseComparison; nodeNames: Record<string, string> }) {
@@ -137,27 +133,7 @@ export function RunComparison({ comparison: c, nodeNames }: Props) {
       )}
 
       <div className="suite-coverage-title">What changed in the workflow</div>
-      {!c.workflow.changed ? (
-        <div className="suite-hint" data-testid="cmp-workflow">The workflow is identical in both runs.</div>
-      ) : (
-        <div className="cmp-workflow" data-testid="cmp-workflow">
-          {c.workflow.nodes.map((n) => (
-            <div key={n.node_id}>
-              <strong>{n.change === 'added' ? 'Added' : n.change === 'removed' ? 'Removed' : 'Edited'}</strong> step “{n.name}”
-              {n.fields.map((f) => (
-                <div key={f.field} className="cmp-field">
-                  <code>{f.field}</code>: <span className="cmp-before">{show(f.before)}</span> → <span className="cmp-after">{show(f.after)}</span>
-                </div>
-              ))}
-            </div>
-          ))}
-          {c.workflow.edges.map((e) => (
-            <div key={`${e.change}-${e.source}-${e.target}-${e.label}`}>
-              <strong>{e.change === 'added' ? 'Added' : 'Removed'}</strong> connection {e.source_name} → {e.target_name}{e.label ? ` (${e.label})` : ''}
-            </div>
-          ))}
-        </div>
-      )}
+      <WorkflowDiffView diff={c.workflow} identical="The workflow is identical in both runs." testId="cmp-workflow" />
 
       {(c.coverage.nodes_no_longer_visited.length > 0 || c.coverage.nodes_newly_visited.length > 0) && (
         <div className="suite-hint" data-testid="cmp-coverage">

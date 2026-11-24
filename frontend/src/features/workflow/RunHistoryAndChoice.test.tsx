@@ -160,7 +160,8 @@ describe('Toolbar — History', () => {
   it('calls onHistory', () => {
     const onHistory = vi.fn();
     render(<Toolbar {...props} onHistory={onHistory} />);
-    fireEvent.click(screen.getByRole('button', { name: 'History' }));
+    fireEvent.click(screen.getByRole('button', { name: /Analyze/ }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Run history' }));
     expect(onHistory).toHaveBeenCalledOnce();
   });
 });

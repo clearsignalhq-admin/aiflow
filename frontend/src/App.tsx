@@ -39,6 +39,7 @@ import { MermaidModal } from './features/workflow/MermaidModal';
 import { ExplainModal } from './features/workflow/ExplainModal';
 import { SuggestionsModal } from './features/workflow/SuggestionsModal';
 import { SafetyModal } from './features/workflow/SafetyModal';
+import { CloudModal } from './features/workflow/CloudModal';
 import { ExportCodeModal } from './features/workflow/ExportCodeModal';
 import type { RunDetail } from './models/runs';
 import './index.css';
@@ -99,6 +100,7 @@ export default function WorkflowApp() {
   const [isDirty, setIsDirty] = useState(false);
   const isFirstWorkflowRender = useRef(true);
   const cleanLoadRef = useRef(false);
+  const [cloudId, setCloudId] = useState<string | null>(null);
   const clipboardRef = useRef<WorkflowNode | null>(null);
 
   useEffect(() => {
@@ -221,6 +223,7 @@ export default function WorkflowApp() {
     if (!confirmDiscard()) return;
     cleanLoadRef.current = true;
     reset(createDefaultWorkflow());
+    setCloudId(null);
     setSelectedNodeId(null);
     setSelectedEdgeId(null);
     setValidationState(null);
@@ -260,6 +263,7 @@ export default function WorkflowApp() {
         const loaded = deserializeWorkflow(evt.target?.result as string);
         cleanLoadRef.current = true;
         reset(loaded);
+        setCloudId(null);
         setSelectedNodeId(null);
         setSelectedEdgeId(null);
         setValidationState(null);
@@ -309,6 +313,7 @@ export default function WorkflowApp() {
     if (!confirmDiscard()) return;
     cleanLoadRef.current = true;
     reset(loaded);
+    setCloudId(null);
     setSelectedNodeId(null);
     setSelectedEdgeId(null);
     setValidationState(null);
@@ -448,6 +453,23 @@ export default function WorkflowApp() {
   const handleOpenExplain = useCallback(() => setShowExplain(true), []);
   const [showSuggest, setShowSuggest] = useState(false);
   const [showSafety, setShowSafety] = useState(false);
+  const [showCloud, setShowCloud] = useState(false);
+  const handleOpenCloud = useCallback(() => setShowCloud(true), []);
+  const handleCloudOpen = useCallback((loaded: Workflow, id: string) => {
+    if (!confirmDiscard()) return;
+    cleanLoadRef.current = true;
+    reset(loaded);
+    setCloudId(id);
+    setSelectedNodeId(null);
+    setSelectedEdgeId(null);
+    setValidationState(null);
+    setSimulationTrace(null);
+    setSimulationEvaluation(null);
+    setSimulationSettings(null);
+    setCurrentSimStep(0);
+    setRightPanelView('properties');
+    flash(`Opened from the cloud: ${loaded.name}`);
+  }, [flash, reset, confirmDiscard]);
   const handleOpenSafety = useCallback(() => setShowSafety(true), []);
   const handleOpenSuggest = useCallback(() => setShowSuggest(true), []);
   const handleChangesApplied = useCallback((updated: Workflow, count: number) => {
@@ -548,6 +570,7 @@ export default function WorkflowApp() {
         onExplain={handleOpenExplain}
         onSuggest={handleOpenSuggest}
         onSafety={handleOpenSafety}
+        onCloud={handleOpenCloud}
         onExportCode={handleOpenExportCode}
         onGenerate={handleGenerate}
         onRefine={handleRefine}
@@ -642,6 +665,16 @@ export default function WorkflowApp() {
 
       {showExportCode && (
         <ExportCodeModal workflow={workflow} onImport={handleExampleSelected} onClose={() => setShowExportCode(false)} />
+      )}
+
+      {showCloud && (
+        <CloudModal
+          workflow={workflow}
+          cloudId={cloudId}
+          onOpen={handleCloudOpen}
+          onCloudIdChange={(id) => { setCloudId(id); if (id) setIsDirty(false); }}
+          onClose={() => setShowCloud(false)}
+        />
       )}
 
       {showSafety && (

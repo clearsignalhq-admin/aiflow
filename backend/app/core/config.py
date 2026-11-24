@@ -31,6 +31,10 @@ class Settings(BaseSettings):
     demo_max_cases_per_suite: int = 10
     approved_max_cases_per_suite: int = 50
     max_suites_per_user: int = 20
+
+    # Cloud workflows
+    max_cloud_workflows_per_user: int = 30
+    max_versions_per_workflow: int = 30   # newest versions kept
     max_suite_runs_per_suite: int = 20     # newest runs kept per suite
     suite_job_stale_minutes: int = 15      # a running job older than this is marked failed
     real_suite_max_cases: int = 20         # most cases in a run that calls the real AI model

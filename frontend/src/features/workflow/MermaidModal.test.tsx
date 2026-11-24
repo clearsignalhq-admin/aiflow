@@ -103,7 +103,8 @@ describe('Toolbar — Mermaid button', () => {
     const onMermaid = vi.fn();
     render(<Toolbar workflowName="W" onNew={vi.fn()} onSave={vi.fn()} onOpen={vi.fn()} onOpenExamplePicker={vi.fn()} onValidate={vi.fn()}
       onGenerate={vi.fn()} onRefine={vi.fn()} onSimulate={vi.fn()} onEditJson={vi.fn()} onNameChange={vi.fn()} onMermaid={onMermaid} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Mermaid' }));
+    fireEvent.click(screen.getByRole('button', { name: /Export/ }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Mermaid diagram' }));
     expect(onMermaid).toHaveBeenCalledOnce();
   });
 });

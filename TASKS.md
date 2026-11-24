@@ -1,5 +1,32 @@
 # AiFlow — Current Iteration
 
+## Iteration 15 — Top Bar
+
+#### Task 62 — Grouped Menus and Command Palette `[x]`
+
+- [x] File / Export / Analyze menus with keyboard support, dividers, disabled reasons, hover-to-switch
+- [x] Everyday actions kept on the bar (Validate with badges, Simulate, Tests, Refine, Generate); theme toggle and account menu on the right
+- [x] Command palette (Ctrl/⌘+K): searches every action by name, group and description
+- [x] One shared action list for menus and palette; responsive behaviour for narrow windows
+- [x] Tests: 19 new (menus, keyboard, palette, filtering), 2 existing updated
+
+---
+
+## Iteration 14 — Cloud Workflows and Sharing
+
+Source: `docs/future/2026-11-24 AiFlow - Future Directions.md` (Tier F: cloud workflows, versioning, diff, share by link).
+
+#### Task 61 — Cloud Workflows, Versions and Share Links `[x]`
+
+- [x] `supabase/update_202611241800.sql` (and `schema.sql`): `cloud_workflows` and `workflow_versions`, row-level security, unique (workflow, version)
+- [x] `api/cloud_routes.py`: create / list / open / save / delete, version list, diff (reuses the Task 58 workflow diff), restore as a new version, share and stop sharing, public read-only `GET /api/shared/{token}` (rate limited, owner never exposed)
+- [x] Limits: 30 workflows per user, newest 30 versions kept; identical saves add no version; racing saves give a clear conflict
+- [x] **Cloud** dialog (save, open, versions, changes since, restore, share link, delete) and the public `/shared/:token` page (read-only canvas, JSON download)
+- [x] Shared diff component used by run comparison and version history
+- [x] Tests: 14 backend and 18 frontend
+
+---
+
 ## Iteration 13 — Failure Injection and Safety Checks
 
 Source: `docs/future/2026-11-24 AiFlow - Future Directions.md` (B7, B8).

@@ -619,6 +619,50 @@ Future Directions B7 and B8, static and simulated parts. **Follow-ups (not sched
 
 ---
 
+### Task 61 — Cloud Workflows, Versions and Share Links `[x]`
+
+Done as described above. **Follow-ups (not scheduled):** evaluation report on the shared page (the portfolio case in Future Directions); fork a shared workflow into your own account; named/pinned versions that are never pruned; compare test-suite runs across two versions; visual (on-canvas) diff; per-link expiry and view counts; team sharing with edit rights.
+
+---
+
+## Product Surface — Guides and Versioning
+
+### Task 62 — Top Bar Redesign `[x]`
+
+About 20 buttons became: undo/redo, three menus (**File**: new, open, save, cloud, examples; **Export**: JSON, code, Mermaid, report; **Analyze**: explain, suggest changes, safety checks, run history), the everyday actions **Validate**, **▶ Simulate** and **Tests**, a **Search actions** command palette (Ctrl/⌘+K) that lists every action by name, and **Refine** / **Generate**, with the theme toggle and account menu on the right. One action list feeds both the menus and the palette. Menus work from the keyboard (arrows, Enter, Esc) and switch as you move along the bar; the bar shrinks gracefully on narrow windows.
+
+**Follow-ups (not scheduled):** a Help menu (guide, video guide, About) once Tasks 63-65 exist; user-customisable pinned actions; recently used actions first in the palette; a status line showing saved / unsaved / cloud state next to the workflow name.
+
+---
+
+### Task 63 — Version Number and About Screen `[ ]`
+
+Today nothing meaningful is tracked: the frontend `package.json` says `0.0.0` and the backend hardcodes `0.1.0` in `main.py`.
+
+- [ ] One source of truth for the product version, shown in an **About** dialog (product name, frontend version, backend version, build date and commit, links to the guide and licence)
+- [ ] Backend reports its version and commit from `/api/health`; frontend embeds its version at build time
+- [ ] Warn when the frontend and backend versions are incompatible (old cached page after a deploy)
+- [ ] Release notes / changelog shown from the About dialog
+- [ ] Decide the versioning scheme and how a release is cut (tag, changelog, deploy)
+
+---
+
+### Task 64 — User Guide `[ ]`
+
+- [ ] Written guide for people using AiFlow: getting started, designing a workflow, node types and their settings, simulating, test suites and run comparison, suggested changes, safety checks, exporting and importing, cloud workflows and sharing, limits and daily allowances, troubleshooting
+- [ ] Reachable from inside the app (Help menu, About dialog, and the existing ⓘ help icons linking to the matching section)
+- [ ] Kept in the repository as Markdown and published with the site; screenshots regenerated when the interface changes
+
+---
+
+### Task 65 — Video User Guide `[ ]`
+
+- [ ] Short screen-recorded walkthroughs: a 3-minute quick start (describe, generate, edit, simulate), then one video each for test suites, safety checks, and export
+- [ ] Script and shot list kept in the repository so videos can be re-recorded after interface changes; captions included
+- [ ] Linked from the landing page, the Help menu, and the user guide
+
+---
+
 ## Future Enhancements — Polish & Operations
 
 ### Custom SMTP + Branded Email Templates + Auth Rate Limits

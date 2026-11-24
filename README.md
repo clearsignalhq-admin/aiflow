@@ -125,12 +125,12 @@ Open **http://localhost:5173**.
 ## Running Tests
 
 ```bash
-# Backend (757 tests)
+# Backend (771 tests)
 cd backend
 .venv/Scripts/pytest -v       # Windows
 pytest -v                     # macOS / Linux
 
-# Frontend unit tests (393 tests)
+# Frontend unit tests (430 tests)
 cd frontend
 npm test
 
@@ -267,6 +267,20 @@ Click **Tests** in the toolbar to define test cases for the current workflow and
 - **Real-model runs:** choose *Real model* to run the cases against the actual AI model instead of simulated answers. Before you run, the dialog shows the most model calls and rough cost the run could use, and how many AI requests you have left today; it asks you to confirm. Each model call a case makes counts against your daily AI request allowance (a timed-out case is charged the most it could have used), at most 20 cases per real run, and answers can differ between runs, so checks on model output are less exact than with the simulator. A pinned *Mock output* on an AI step is ignored in real mode A run is tied to the workflow it was created for (matched by workflow id) and uses a snapshot of both the workflow and the cases, so editing them mid-run changes nothing
 - **Compare runs:** open any previous run, pick another run of the same suite under *Compare with* (the run just before it is preselected) and press **Compare**. You get a verdict (regression, improvement or no change) with the pass-rate movement, then each test case classified as **regressed**, **fixed**, **still failing**, **unchanged**, new, removed or not run in both. For cases that ran in both: which checks flipped (with the reason), which steps now run or no longer run, and whether the output, cost or model calls changed. A **workflow diff** shows what was added, removed or edited between the two runs (including changed settings such as a prompt or an expression), so a regression can be traced to an edit, plus coverage movement. Warnings flag runs that are not directly comparable: one real and one simulated, different seeds, edited test cases, unfinished runs, or ordinary variation between two real-model runs. Comparing in the other direction turns a regression into an improvement
 - Requires the suite tables: apply `supabase/update_202611241600.sql`, then `update_202611241700.sql` for real-model runs (both already in `supabase/schema.sql` for new projects)
+
+#### The top bar
+
+Everyday actions sit on the bar: undo/redo, **Validate**, **▶ Simulate**, **Tests**, **Refine** and **Generate**. The rest is grouped into three menus: **File** (new, open, save to a file, cloud workflows, examples), **Export** (edit JSON, code, Mermaid, report) and **Analyze** (explain, suggest changes, safety checks, run history). Press **Ctrl+K** (⌘K on a Mac) or use *Search actions* to find any action by typing part of its name or what it does; arrow keys and Enter work in the menus and in the palette.
+
+#### Cloud workflows, versions and sharing
+
+**Cloud** (toolbar) keeps workflows in your account instead of a file.
+
+- **Save** the workflow on screen as a new cloud workflow, or **Save changes** to the one open in the editor. Every save that changes something adds a **version** (with an optional note); a save that changes nothing adds none. The newest 30 versions are kept, and you can keep up to 30 workflows.
+- **Versions** lists the history. **Changes since** shows what was added, removed or edited between a version and the current copy (including changed settings), and **Restore** brings an old version back as a new version, so nothing is lost.
+- **Share** turns on a read-only link (`/shared/<token>`) that anyone can open without signing in. The page shows the current copy on a canvas, with a JSON download; it never shows who owns it and cannot change anything. **Stop sharing** ends the link for good; sharing again makes a new address. Deleting a workflow also ends its link. Anyone who has the link can see the workflow, so do not share workflows that contain anything private.
+
+Needs the `cloud_workflows` and `workflow_versions` tables (`supabase/update_202611241800.sql`). Endpoints: `/api/cloud/workflows` (list, create, get, save, delete), `/versions`, `/diff`, `/versions/{n}/restore`, `/share`, and the public `GET /api/shared/{token}`.
 
 #### Safety checks
 

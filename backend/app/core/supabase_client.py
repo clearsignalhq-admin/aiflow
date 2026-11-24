@@ -437,3 +437,105 @@ async def insert_case_result(record: dict[str, Any]) -> bool:
             params={"on_conflict": "run_id,case_id"}, json=record)
         resp.raise_for_status()
         return bool(resp.json())
+
+
+# ── Cloud workflows (Task 61) ───────────────────────────────────────────────
+
+_CLOUD = "cloud_workflows"
+_VERSIONS = "workflow_versions"
+_CLOUD_LIST_FIELDS = "id,name,version_count,share_token,updated_at,created_at"
+
+
+async def list_cloud_workflows(user_id: str) -> list[dict[str, Any]]:
+    params = {"user_id": f"eq.{user_id}", "select": _CLOUD_LIST_FIELDS, "order": "updated_at.desc", "limit": "200"}
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(f"{settings.supabase_url}/rest/v1/{_CLOUD}", headers=_base_headers(), params=params)
+        resp.raise_for_status()
+        return resp.json()
+
+
+async def count_cloud_workflows(user_id: str) -> int:
+    return len(await list_cloud_workflows(user_id))
+
+
+async def get_cloud_workflow(user_id: str, workflow_id: str) -> Optional[dict[str, Any]]:
+    params = {"id": f"eq.{workflow_id}", "user_id": f"eq.{user_id}", "select": "*", "limit": "1"}
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(f"{settings.supabase_url}/rest/v1/{_CLOUD}", headers=_base_headers(), params=params)
+        resp.raise_for_status()
+        rows = resp.json()
+        return rows[0] if rows else None
+
+
+async def get_cloud_workflow_by_token(token: str) -> Optional[dict[str, Any]]:
+    """Public lookup for share links: only the fields a viewer may see."""
+    params = {"share_token": f"eq.{token}", "select": "name,workflow,shared_at", "limit": "1"}
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(f"{settings.supabase_url}/rest/v1/{_CLOUD}", headers=_base_headers(), params=params)
+        resp.raise_for_status()
+        rows = resp.json()
+        return rows[0] if rows else None
+
+
+async def insert_cloud_workflow(record: dict[str, Any]) -> dict[str, Any]:
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(f"{settings.supabase_url}/rest/v1/{_CLOUD}", headers=_base_headers(), json=record)
+        resp.raise_for_status()
+        return resp.json()[0]
+
+
+async def update_cloud_workflow(user_id: str, workflow_id: str, patch: dict[str, Any]) -> Optional[dict[str, Any]]:
+    params = {"id": f"eq.{workflow_id}", "user_id": f"eq.{user_id}"}
+    async with httpx.AsyncClient() as client:
+        resp = await client.patch(f"{settings.supabase_url}/rest/v1/{_CLOUD}", headers=_base_headers(), params=params, json=patch)
+        resp.raise_for_status()
+        rows = resp.json()
+        return rows[0] if rows else None
+
+
+async def delete_cloud_workflow(user_id: str, workflow_id: str) -> bool:
+    params = {"id": f"eq.{workflow_id}", "user_id": f"eq.{user_id}"}
+    async with httpx.AsyncClient() as client:
+        resp = await client.delete(f"{settings.supabase_url}/rest/v1/{_CLOUD}", headers=_base_headers(), params=params)
+        resp.raise_for_status()
+        return bool(resp.json())
+
+
+async def insert_workflow_version(record: dict[str, Any]) -> dict[str, Any]:
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(f"{settings.supabase_url}/rest/v1/{_VERSIONS}", headers=_base_headers(), json=record)
+        resp.raise_for_status()
+        return resp.json()[0]
+
+
+async def list_workflow_versions(user_id: str, workflow_id: str) -> list[dict[str, Any]]:
+    params = {"user_id": f"eq.{user_id}", "workflow_id": f"eq.{workflow_id}", "select": "version,label,created_at,workflow",
+              "order": "version.desc", "limit": "200"}
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(f"{settings.supabase_url}/rest/v1/{_VERSIONS}", headers=_base_headers(), params=params)
+        resp.raise_for_status()
+        return resp.json()
+
+
+async def get_workflow_version(user_id: str, workflow_id: str, version: int) -> Optional[dict[str, Any]]:
+    params = {"user_id": f"eq.{user_id}", "workflow_id": f"eq.{workflow_id}", "version": f"eq.{version}", "select": "*", "limit": "1"}
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(f"{settings.supabase_url}/rest/v1/{_VERSIONS}", headers=_base_headers(), params=params)
+        resp.raise_for_status()
+        rows = resp.json()
+        return rows[0] if rows else None
+
+
+async def prune_workflow_versions(user_id: str, workflow_id: str, keep: int) -> None:
+    """Delete a workflow's versions beyond the newest ``keep``."""
+    url = f"{settings.supabase_url}/rest/v1/{_VERSIONS}"
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(url, headers=_base_headers(), params={
+            "user_id": f"eq.{user_id}", "workflow_id": f"eq.{workflow_id}", "select": "id",
+            "order": "version.desc", "offset": str(keep), "limit": "1000"})
+        resp.raise_for_status()
+        stale = [r["id"] for r in resp.json()]
+        if stale:
+            resp = await client.delete(url, headers={**_base_headers(), "Prefer": "return=minimal"}, params={
+                "user_id": f"eq.{user_id}", "id": f"in.({','.join(stale)})"})
+            resp.raise_for_status()
