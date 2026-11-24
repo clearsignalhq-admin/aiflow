@@ -34,6 +34,7 @@ import { API_BASE } from './config';
 import { formatApiError } from './utils/apiError';
 import { useAuth } from './context/AuthContext';
 import { RunHistoryModal } from './features/workflow/RunHistoryModal';
+import { SuiteModal } from './features/workflow/suites/SuiteModal';
 import type { RunDetail } from './models/runs';
 import './index.css';
 
@@ -434,6 +435,8 @@ export default function WorkflowApp() {
   }, [simulationTrace, simulationSettings, currentSimStep, showError, apiHeaders]);
 
   const [showRunHistory, setShowRunHistory] = useState(false);
+  const [showSuites, setShowSuites] = useState(false);
+  const handleOpenSuites = useCallback(() => setShowSuites(true), []);
   const handleOpenHistory = useCallback(() => setShowRunHistory(true), []);
 
   /** Show a stored run. If the canvas no longer contains its nodes, load the workflow it ran on. */
@@ -520,6 +523,7 @@ export default function WorkflowApp() {
         onOpenExamplePicker={handleOpenExamplePicker}
         onValidate={handleValidate}
         onHistory={handleOpenHistory}
+        onTests={handleOpenSuites}
         onGenerate={handleGenerate}
         onRefine={handleRefine}
         canRefine={canRefine}
@@ -610,6 +614,10 @@ export default function WorkflowApp() {
           </div>
         </div>
       </div>
+
+      {showSuites && (
+        <SuiteModal workflow={workflow} onClose={() => setShowSuites(false)} />
+      )}
 
       {showRunHistory && (
         <RunHistoryModal onReplay={handleReplayRun} onClose={() => setShowRunHistory(false)} />

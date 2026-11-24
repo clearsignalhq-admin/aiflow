@@ -27,9 +27,16 @@ Source: `docs/AiFlow - Async Suite Runs Design.md`. Full descriptions in `BACKLO
 - [x] `backend/benchmarks/bench_simulation.py`; results recorded in the design note (worst p95 ≈ 0.33 ms/case)
 - [x] Loose regression test; synchronous-suite cutoff decided (case cap, bulk insert)
 
-#### Task 50 — Suites: Data Model, Job API, Client-Driven Executor `[ ]`
+#### Task 50 — Suites: Data Model, Job API, Client-Driven Executor `[x]`
 
-- [ ] **Blocked on owner decisions** (design note §8): executor for phase 1, case caps, shared vs separate allowance, assertion/judge scope
+Decisions recorded in the design note §8 (client-driven executor, caps 10/50, shared allowance, deterministic assertions only).
+
+- [x] Tables `suites`, `suite_runs`, `suite_case_results` + RLS; `schema.sql` + `update_202611241600.sql`
+- [x] Deterministic assertions (10 types) with validation at save time; value-vs-schema validator
+- [x] Suite runner (mock mode, seeded, auto-approve), exact edge coverage, pass rate, node-failure hot spots
+- [x] Job API with idempotent case execution, cancel, stale detection, tier caps, up-front allowance check, retention (20 runs per suite)
+- [x] UI: **Tests** button; suite editor (cases, inputs, checks), run with live progress and Stop, report, previous runs
+- [x] Tests: backend (assertions, runner, API via an in-memory database fake, store queries) and frontend (editor, report, modal flows, executor, API client)
 
 ---
 

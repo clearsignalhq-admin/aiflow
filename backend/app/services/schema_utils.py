@@ -139,3 +139,68 @@ def generate(schema: Any, rng: random.Random, name: str = "value", depth: int = 
         props = schema.get("properties") or {}
         return {key: generate(sub, rng, key, depth + 1) for key, sub in props.items()}
     return f"sample {name}"
+
+
+# ── Validating a value against a schema ──────────────────────────────────────
+
+def _type_ok(value: Any, type_: str) -> bool:
+    if type_ == "string":
+        return isinstance(value, str)
+    if type_ == "boolean":
+        return isinstance(value, bool)
+    if type_ == "null":
+        return value is None
+    if type_ == "integer":
+        return isinstance(value, int) and not isinstance(value, bool)
+    if type_ == "number":
+        return isinstance(value, (int, float)) and not isinstance(value, bool)
+    if type_ == "object":
+        return isinstance(value, dict)
+    if type_ == "array":
+        return isinstance(value, list)
+    return True
+
+
+def validate_value(schema: Any, value: Any, path: str = "$", depth: int = 0) -> list[str]:
+    """Problems found when checking ``value`` against ``schema`` (empty list = conforms).
+
+    Checks the same keywords as ``generate`` produces: type, enum, const, minimum/maximum,
+    required, properties (only those present), items, minItems/maxItems. Unknown keywords are ignored.
+    """
+    if not isinstance(schema, dict) or depth > _MAX_DEPTH:
+        return []
+    problems: list[str] = []
+
+    if "const" in schema and value != schema["const"]:
+        problems.append(f"{path}: expected {schema['const']!r}, got {value!r}")
+    if isinstance(schema.get("enum"), list) and value not in schema["enum"]:
+        problems.append(f"{path}: {value!r} is not one of {schema['enum']!r}")
+
+    type_ = schema.get("type")
+    if isinstance(type_, str) and not _type_ok(value, type_):
+        problems.append(f"{path}: expected {type_}, got {type(value).__name__}")
+        return problems  # the rest would only produce noise
+
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        if isinstance(schema.get("minimum"), (int, float)) and value < schema["minimum"]:
+            problems.append(f"{path}: {value} is below the minimum {schema['minimum']}")
+        if isinstance(schema.get("maximum"), (int, float)) and value > schema["maximum"]:
+            problems.append(f"{path}: {value} is above the maximum {schema['maximum']}")
+
+    if isinstance(value, dict):
+        for name in schema.get("required") or []:
+            if name not in value:
+                problems.append(f"{path}: missing required field '{name}'")
+        for name, sub in (schema.get("properties") or {}).items():
+            if name in value:
+                problems += validate_value(sub, value[name], f"{path}.{name}", depth + 1)
+
+    if isinstance(value, list):
+        if isinstance(schema.get("minItems"), int) and len(value) < schema["minItems"]:
+            problems.append(f"{path}: has {len(value)} items, fewer than {schema['minItems']}")
+        if isinstance(schema.get("maxItems"), int) and len(value) > schema["maxItems"]:
+            problems.append(f"{path}: has {len(value)} items, more than {schema['maxItems']}")
+        if "items" in schema:
+            for i, item in enumerate(value[:50]):
+                problems += validate_value(schema["items"], item, f"{path}[{i}]", depth + 1)
+    return problems

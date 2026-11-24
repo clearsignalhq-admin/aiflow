@@ -125,12 +125,12 @@ Open **http://localhost:5173**.
 ## Running Tests
 
 ```bash
-# Backend (342 tests)
+# Backend (443 tests)
 cd backend
 .venv/Scripts/pytest -v       # Windows
 pytest -v                     # macOS / Linux
 
-# Frontend unit tests (203 tests)
+# Frontend unit tests (265 tests)
 cd frontend
 npm test
 
@@ -254,6 +254,17 @@ Every simulation is saved to your account, including its settings, input, the wo
 - A run larger than 500 KB (`MAX_RUN_BYTES`) is saved without per-step inputs/outputs and marked *trimmed*; if it still does not fit it is not saved
 - Saving is best-effort: if storage is unavailable the simulation still succeeds, it just does not appear in History
 - Requires the `workflow_runs` table (`supabase/update_202611241200.sql`). Resuming a paused run from another server process also needs `supabase/update_202611241400.sql` (adds `continuation`). Daily usage counting uses `supabase/update_202611241500.sql` (atomic `increment_usage` function). All three are already part of `supabase/schema.sql` for new projects; apply them in order on an existing project
+
+#### Test suites
+
+Click **Tests** in the toolbar to define test cases for the current workflow and run them all at once.
+
+- **Cases:** each case has a name, an input (JSON) and any number of **checks** on the workflow's final output (the `result` of the END node reached). Use *Add case from sample input* to start from the workflow's sample input
+- **Checks** (deterministic, there is no AI judge, so the same suite always gives the same answer): output equals / contains / is one of, a field exists, a number comparison, output matches a JSON schema, a safe expression is true (names: `input`, `output`, `visited`, `steps`, `status`), the case visits or skips a node, or finishes in at most N steps. Field paths are dotted, with list indexes: `order.items.0.sku`
+- **Running:** every case is one **mock-mode** simulation, auto-approving human review, with a reproducible seed (a case's own seed, or run seed + its position), so branches vary across cases but results repeat exactly. The browser drives the run, a few cases at a time, and the server stores every result; **Stop** ends it early. Real-LLM suites are not supported yet
+- **Report:** pass rate, per-case results with the reason each check failed, which nodes no case executed, which branches were never taken, and which nodes failures involve. Previous runs (the newest 20 per suite) can be reopened
+- **Limits:** up to 50 cases per suite (10 for demo accounts) and 20 suites per user. Each case counts as one simulation toward your daily allowance, and a run that would exceed it is refused up front. A run is tied to the workflow it was created for (matched by workflow id) and uses a snapshot of both the workflow and the cases, so editing them mid-run changes nothing
+- Requires the suite tables: apply `supabase/update_202611241600.sql` (already in `supabase/schema.sql` for new projects)
 
 #### LLM Evaluation
 

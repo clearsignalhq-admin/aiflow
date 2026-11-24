@@ -295,3 +295,145 @@ async def prune_runs(user_id: str, keep: int, older_than_iso: Optional[str]) -> 
                     params={"user_id": f"eq.{user_id}", "id": f"in.({','.join(stale)})"},
                 )
                 resp.raise_for_status()
+
+
+# ── Test suites (Task 50) ────────────────────────────────────────────────────
+# Every query is scoped by user_id; callers pass the authenticated user's id.
+
+async def list_suites(user_id: str, workflow_id: Optional[str]) -> list[dict[str, Any]]:
+    params = {
+        "user_id": f"eq.{user_id}",
+        "select": "id,workflow_id,name,case_count,updated_at",
+        "order": "updated_at.desc",
+        "limit": "100",
+    }
+    if workflow_id:
+        params["workflow_id"] = f"eq.{workflow_id}"
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(f"{settings.supabase_url}/rest/v1/suites", headers=_base_headers(), params=params)
+        resp.raise_for_status()
+        return resp.json()
+
+
+async def count_suites(user_id: str) -> int:
+    params = {"user_id": f"eq.{user_id}", "select": "id", "limit": "1000"}
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(f"{settings.supabase_url}/rest/v1/suites", headers=_base_headers(), params=params)
+        resp.raise_for_status()
+        return len(resp.json())
+
+
+async def get_suite(user_id: str, suite_id: str) -> Optional[dict[str, Any]]:
+    params = {"id": f"eq.{suite_id}", "user_id": f"eq.{user_id}", "select": "*", "limit": "1"}
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(f"{settings.supabase_url}/rest/v1/suites", headers=_base_headers(), params=params)
+        resp.raise_for_status()
+        rows = resp.json()
+        return rows[0] if rows else None
+
+
+async def insert_suite(record: dict[str, Any]) -> dict[str, Any]:
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(f"{settings.supabase_url}/rest/v1/suites", headers=_base_headers(), json=record)
+        resp.raise_for_status()
+        return resp.json()[0]
+
+
+async def update_suite(user_id: str, suite_id: str, patch: dict[str, Any]) -> Optional[dict[str, Any]]:
+    params = {"id": f"eq.{suite_id}", "user_id": f"eq.{user_id}"}
+    async with httpx.AsyncClient() as client:
+        resp = await client.patch(f"{settings.supabase_url}/rest/v1/suites", headers=_base_headers(), params=params, json=patch)
+        resp.raise_for_status()
+        rows = resp.json()
+        return rows[0] if rows else None
+
+
+async def delete_suite(user_id: str, suite_id: str) -> bool:
+    params = {"id": f"eq.{suite_id}", "user_id": f"eq.{user_id}"}
+    async with httpx.AsyncClient() as client:
+        resp = await client.delete(f"{settings.supabase_url}/rest/v1/suites", headers=_base_headers(), params=params)
+        resp.raise_for_status()
+        return bool(resp.json())
+
+
+async def insert_suite_run(record: dict[str, Any]) -> dict[str, Any]:
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(f"{settings.supabase_url}/rest/v1/suite_runs", headers=_base_headers(), json=record)
+        resp.raise_for_status()
+        return resp.json()[0]
+
+
+async def get_suite_run(user_id: str, run_id: str) -> Optional[dict[str, Any]]:
+    params = {"id": f"eq.{run_id}", "user_id": f"eq.{user_id}", "select": "*", "limit": "1"}
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(f"{settings.supabase_url}/rest/v1/suite_runs", headers=_base_headers(), params=params)
+        resp.raise_for_status()
+        rows = resp.json()
+        return rows[0] if rows else None
+
+
+async def update_suite_run(user_id: str, run_id: str, patch: dict[str, Any]) -> bool:
+    params = {"id": f"eq.{run_id}", "user_id": f"eq.{user_id}"}
+    async with httpx.AsyncClient() as client:
+        resp = await client.patch(f"{settings.supabase_url}/rest/v1/suite_runs", headers=_base_headers(), params=params, json=patch)
+        resp.raise_for_status()
+        return bool(resp.json())
+
+
+async def list_suite_runs(user_id: str, suite_id: str, limit: int) -> list[dict[str, Any]]:
+    params = {
+        "user_id": f"eq.{user_id}",
+        "suite_id": f"eq.{suite_id}",
+        "select": "id,suite_id,status,case_count,seed,created_at,finished_at,suite_case_results(status)",
+        "order": "created_at.desc",
+        "limit": str(limit),
+    }
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(f"{settings.supabase_url}/rest/v1/suite_runs", headers=_base_headers(), params=params)
+        resp.raise_for_status()
+        return resp.json()
+
+
+async def prune_suite_runs(user_id: str, suite_id: str, keep: int) -> None:
+    """Delete a suite's runs beyond the newest ``keep`` (their case results go with them)."""
+    url = f"{settings.supabase_url}/rest/v1/suite_runs"
+    headers = {**_base_headers(), "Prefer": "return=minimal"}
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(url, headers=_base_headers(), params={
+            "user_id": f"eq.{user_id}", "suite_id": f"eq.{suite_id}", "select": "id",
+            "order": "created_at.desc", "offset": str(keep), "limit": "1000"})
+        resp.raise_for_status()
+        stale = [r["id"] for r in resp.json()]
+        if stale:
+            resp = await client.delete(url, headers=headers, params={
+                "user_id": f"eq.{user_id}", "id": f"in.({','.join(stale)})"})
+            resp.raise_for_status()
+
+
+async def list_case_results(user_id: str, run_id: str) -> list[dict[str, Any]]:
+    params = {"user_id": f"eq.{user_id}", "run_id": f"eq.{run_id}", "select": "case_id,status,result", "limit": "1000"}
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(f"{settings.supabase_url}/rest/v1/suite_case_results", headers=_base_headers(), params=params)
+        resp.raise_for_status()
+        return resp.json()
+
+
+async def get_case_result(user_id: str, run_id: str, case_id: str) -> Optional[dict[str, Any]]:
+    params = {"user_id": f"eq.{user_id}", "run_id": f"eq.{run_id}", "case_id": f"eq.{case_id}",
+              "select": "case_id,status,result", "limit": "1"}
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(f"{settings.supabase_url}/rest/v1/suite_case_results", headers=_base_headers(), params=params)
+        resp.raise_for_status()
+        rows = resp.json()
+        return rows[0] if rows else None
+
+
+async def insert_case_result(record: dict[str, Any]) -> bool:
+    """Store a case result once. Returns False if one already existed (duplicate request)."""
+    headers = {**_base_headers(), "Prefer": "resolution=ignore-duplicates,return=representation"}
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            f"{settings.supabase_url}/rest/v1/suite_case_results", headers=headers,
+            params={"on_conflict": "run_id,case_id"}, json=record)
+        resp.raise_for_status()
+        return bool(resp.json())

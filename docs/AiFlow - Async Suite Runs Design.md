@@ -111,12 +111,16 @@ State machine: `queued → running → complete | failed | cancelled`. A case re
 
 Fact 5 matters beyond suites. HITL pause (and the user-pick pause added in Task 43) keep their continuation in process memory, so in the deployed Lambda a resume request will often hit a different container and fail with "No paused simulation found". The persisted run (Task 42) already holds the trace and the workflow snapshot; what is missing is the continuation (queue + visited set). **Resolved in Task 46:** the continuation (queue, visited set, pause kind, branch choices, branch data) is stored in `workflow_runs.continuation` and `_PausedState` is rebuilt from it on resume, scoped to the requesting user. It is cleared when the run is no longer paused. If the run cannot be stored or restored, resume still works within the same process as before.
 
-## 8. Decisions needed from the owner
+## 8. Decisions (2026-11-24)
 
-1. Is "browser must stay open" acceptable for Phase 1 (Option A), or is CI-style unattended running needed from day one (go straight to Option B)?
-2. Case caps per tier (suggested: demo 10, approved 50).
-3. Should a suite consume the same daily allowance as one-off simulations, or get its own?
-4. Assertion/judge scope for the first release: deterministic assertions only, or an LLM judge too (adds cost and the calibration problem, B9)?
+Resolved by the owner choosing the recommended defaults:
+
+1. **Executor:** client-driven (Option A) for the first release; the SQS worker (Option B) stays the plan for CI. The job API is unchanged between them.
+2. **Case caps:** 10 for demo accounts, 50 for approved accounts (settings `DEMO_MAX_CASES_PER_SUITE` / `APPROVED_MAX_CASES_PER_SUITE`), plus 20 suites per user.
+3. **Allowance:** suites share the daily *executions* allowance; each executed case costs one unit, and a run is refused up front if it cannot fit.
+4. **Assertions:** deterministic only. No LLM judge, so no calibration problem (B9) yet.
+
+Consequences: suites run in **mock mode only** for now (a real-LLM case would need LLM-request accounting and a longer per-case budget).
 
 ## 9. Follow-up tasks
 
@@ -126,4 +130,11 @@ Fact 5 matters beyond suites. HITL pause (and the user-pick pause added in Task 
 | 47 | Atomic usage counter via SQL function + RPC (§5) | Done. Suites can add N units in one call (`by=N`) |
 | 48 | Align timeouts with the 30 s gateway limit; clear 504s (§1 #3) | Done |
 | 49 | Benchmark mock simulation; fix the synchronous cutoff (§1, §3) | Done (results in §1) |
-| 50 | Suites data model + job API + Option A executor (B1–B3) | **Waiting on the owner decisions in §8** |
+| 50 | Suites data model + job API + Option A executor (B1–B3) | Done (see below) |
+
+### What Task 50 built
+
+- **Tables:** `suites` (cases stored as a JSON document, so a save is atomic), `suite_runs` (the job, with snapshots of the workflow and cases), `suite_case_results` (primary key `(run_id, case_id)`, which makes running a case idempotent). RLS lets users read only their own rows; the backend writes through the service role.
+- **API:** `GET/POST /api/suites`, `GET/PUT/DELETE /api/suites/{id}`, `POST /api/suites/{id}/runs`, `GET /api/suites/{id}/runs`, `GET /api/suite-runs/{id}`, `POST /api/suite-runs/{id}/cancel`, `POST /api/suite-runs/{id}/cases/{case_id}/run`.
+- **Job rules:** created in `running`; becomes `complete` when every case has a result, `cancelled` on request, and `failed` if it is still unfinished 15 minutes after creation (settled lazily on the next read). Repeating a case returns the stored result and is not charged again. A run is refused for a different workflow, an empty suite, an unsimulatable workflow (cycle, no START/END), or an exceeded allowance.
+- **Coverage is exact:** steps now record the edges actually followed (`next_ids`), so "branches never taken" is not guessed from visited nodes.

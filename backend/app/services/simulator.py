@@ -369,6 +369,7 @@ async def _run_bfs(
         else:
             chosen = outgoing
 
+        step.next_ids = [e.target for e in chosen if e.target in node_by_id]
         for edge in chosen:
             if edge.target not in visited and edge.target in node_by_id:
                 queue.append((edge.target, output))
@@ -379,6 +380,11 @@ async def _run_bfs(
 
 
 # ── Validation ────────────────────────────────────────────────────────────────
+
+def validate_for_simulation(workflow: Workflow) -> None:
+    """Raise SimulationError if the workflow cannot be simulated (no START/END, bad edges, cycle)."""
+    _validate_for_simulation(workflow)
+
 
 def _validate_for_simulation(workflow: Workflow) -> None:
     node_ids = {n.id for n in workflow.nodes}

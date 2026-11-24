@@ -27,6 +27,13 @@ class Settings(BaseSettings):
     min_llm_evaluation_seconds: float = 3.0    # below this, skip the LLM evaluation and use the mock one
     persist_reserve_seconds: float = 2.0       # kept free for saving the run
 
+    # Test suites
+    demo_max_cases_per_suite: int = 10
+    approved_max_cases_per_suite: int = 50
+    max_suites_per_user: int = 20
+    max_suite_runs_per_suite: int = 20     # newest runs kept per suite
+    suite_job_stale_minutes: int = 15      # a running job older than this is marked failed
+
     # Persisted simulation runs
     max_runs_per_user: int = 50
     run_retention_days: int = 30      # 0 = keep until pushed out by max_runs_per_user

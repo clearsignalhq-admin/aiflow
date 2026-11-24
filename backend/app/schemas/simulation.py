@@ -57,6 +57,7 @@ class NodeExecution(BaseModel):
     output: Any = None
     error: Optional[str] = None
     warnings: list[str] = Field(default_factory=list)
+    next_ids: list[str] = Field(default_factory=list)   # targets of the edges actually followed from this node
 
 
 class ChoiceOption(BaseModel):

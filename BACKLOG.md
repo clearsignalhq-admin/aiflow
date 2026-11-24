@@ -565,10 +565,11 @@ HITL and user-pick pauses live in process memory, so on Lambda a resume often fa
 - Measure mock-mode simulation of the complex examples on a Lambda-sized container (p50/p95 over 100 cases)
 - Use the result to fix the synchronous-suite cutoff
 
-### Task 50 — Suites: Data Model, Job API, Client-Driven Executor `[ ]`
+### Task 50 — Suites: Data Model, Job API, Client-Driven Executor `[x]`
 
 - Tables, job API and Option A executor from the design note (§3–§5)
 - Depends on Tasks 46–49
+- **Done.** Decisions and what was built are recorded in the design note (§8 and "What Task 50 built")
 
 ---
 
