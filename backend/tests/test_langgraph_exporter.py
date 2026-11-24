@@ -48,10 +48,12 @@ def write_project(files: dict[str, str], root: Path) -> Path:
     return root
 
 
-def run_py(project: Path, *args: str, timeout: int = 120) -> subprocess.CompletedProcess:
-    env = {k: v for k, v in os.environ.items() if not k.startswith(("AIFLOW_", "PYTHON"))}
-    env["PYTHONIOENCODING"] = "utf-8"
-    return subprocess.run([sys.executable, *args], cwd=project, env=env, capture_output=True, text=True, timeout=timeout, encoding="utf-8")
+def run_py(project: Path, *args: str, timeout: int = 120, env: dict[str, str] | None = None) -> subprocess.CompletedProcess:
+    """Run Python in the generated project with a clean environment (no AiFlow/OpenAI settings leak in)."""
+    clean = {k: v for k, v in os.environ.items() if not k.startswith(("AIFLOW_", "PYTHON", "OPENAI"))}
+    clean["PYTHONIOENCODING"] = "utf-8"
+    clean.update(env or {})
+    return subprocess.run([sys.executable, *args], cwd=project, env=clean, capture_output=True, text=True, timeout=timeout, encoding="utf-8")
 
 
 def run_generated_tests(project: Path) -> subprocess.CompletedProcess:
@@ -266,11 +268,11 @@ def test_default_branch_and_missing_expression(tmp_path):
     assert sim["kind"] == "alpha"
 
 
-def test_integration_stubs_return_fixtures_and_are_listed_as_todo(tmp_path):
+def test_mock_mode_returns_fixtures_for_every_integration_and_only_unimplementable_steps_are_todo(tmp_path):
     wf = Workflow(
         id="w", name="Stubs",
         nodes=[N("s", NodeType.START), N("api", NodeType.API, "Notify", config={"method": "POST", "url": "https://x.test"}),
-               N("db", NodeType.DATABASE, "Save", config={"query": "INSERT INTO t VALUES (1)"}),
+               N("db", NodeType.DATABASE, "Save", config={"query": "INSERT INTO t VALUES (1)", "connection": "env:DB_URL"}),
                N("rag", NodeType.RAG, "Docs", config={"knowledgeBase": "kb"}), N("tool", NodeType.TOOL, "Search", config={"name": "web"}),
                N("t", NodeType.TRANSFORM, "Tidy"), N("e", NodeType.END)],
         edges=[E("s", "api"), E("api", "db"), E("db", "rag"), E("rag", "tool"), E("tool", "t"), E("t", "e")],
@@ -278,10 +280,49 @@ def test_integration_stubs_return_fixtures_and_are_listed_as_todo(tmp_path):
     files = LangGraphExporter().export(wf)
     for stub in ("api_api", "database_db", "rag_rag", "tool_tool", "transform_t"):
         assert f"def {stub}(" in files["integrations.py"]
-        assert f"`{stub}`" in files["README.md"]
+    readme = files["README.md"]
+    todo = readme.split("## What you still need to implement")[1]
+    assert "`tool_tool`" in todo and "`transform_t`" in todo
+    assert "`api_api`" not in todo and "`database_db`" not in todo and "`rag_rag`" not in todo     # these really run
+    assert "What runs for real" in readme and "bound parameters" in readme
     assert "changes data in another system" in files["integrations.py"]
-    out = json.loads(run_py(write_project(files, tmp_path), "main.py", "--input", "{}").stdout)
-    assert out["status"] == 200 and out["rows"] == [] and out["answer"] == "Mock RAG answer" and out["tool"] == "Search"
+
+    project = write_project(files, tmp_path)
+    out = json.loads(run_py(project, "main.py", "--mock", "--input", "{}").stdout)
+    assert out["status"] == 200 and out["rows"] == [] and out["context"] == "" and out["tool"] == "Search"
+
+    unmocked = run_py(project, "main.py", "--input", "{}", env={"DB_URL": "sqlite://"})
+    assert unmocked.returncode != 0                                  # the first step makes a real request to https://x.test
+
+
+@pytest.mark.parametrize("types,expected,absent", [
+    ([NodeType.API], ["httpx"], ["sqlalchemy"]),
+    ([NodeType.DATABASE], ["sqlalchemy", "add the driver"], ["httpx"]),
+    ([NodeType.RAG], [], ["httpx", "sqlalchemy"]),
+    ([], [], ["httpx", "sqlalchemy"]),
+])
+def test_requirements_and_connectors_follow_the_steps_used(types, expected, absent):
+    nodes = [N("s", NodeType.START)] + [N(f"x{i}", t, config={"method": "GET", "url": "http://x", "query": "SELECT 1", "knowledgeBase": "k"})
+                                         for i, t in enumerate(types)] + [N("e", NodeType.END)]
+    ids = [n.id for n in nodes]
+    wf = Workflow(nodes=nodes, edges=[E(a, b) for a, b in zip(ids, ids[1:])])
+    files = LangGraphExporter().export(wf)
+    for word in expected:
+        assert word in files["requirements.txt"]
+    for word in absent:
+        assert word not in files["requirements.txt"]
+    assert ("connectors.py" in files) == bool(types)
+
+
+def test_env_names_from_the_workflow_are_listed_for_the_user():
+    wf = Workflow(
+        nodes=[N("s", NodeType.START),
+               N("a", NodeType.API, config={"method": "GET", "url": "http://x", "headers": {"Authorization": "env:SERVICE_TOKEN", "Accept": "json"}}),
+               N("d", NodeType.DATABASE, config={"query": "SELECT 1", "connection": "env:ORDERS_DB"}), N("e", NodeType.END)],
+        edges=[E("s", "a"), E("a", "d"), E("d", "e")],
+    )
+    env = LangGraphExporter().export(wf)[".env.example"]
+    assert "SERVICE_TOKEN=" in env and "ORDERS_DB=" in env and "Accept" not in env
 
 
 def test_schema_driven_fixtures_equal_the_simulators(tmp_path):

@@ -61,6 +61,8 @@ export interface CaseResult {
   case_name: string;
   status: CaseStatus;
   duration_ms: number;
+  /** Model calls this case made (real-model runs only). */
+  llm_calls?: number;
   error?: string | null;
   error_node_id?: string | null;
   assertion_results: AssertionOutcome[];
@@ -85,10 +87,27 @@ export interface RunReport {
   failed: number;
   errors: number;
   pass_rate: number | null;
+  llm_calls?: number;
   coverage: Coverage;
 }
 
 export type RunStatus = 'running' | 'complete' | 'cancelled' | 'failed';
+export type LlmMode = 'mock' | 'real';
+
+/** What a run would use, from POST /suites/{id}/runs/estimate. Nothing is reserved. */
+export interface RunEstimate {
+  cases: number;
+  llm_mode: LlmMode;
+  llm_calls_per_case_max: number;
+  llm_calls_max: number;
+  cost_usd_max: number;
+  executions_needed: number;
+  executions_remaining: number | null;
+  llm_requests_remaining: number | null;
+  allowed: boolean;
+  reason: string | null;
+  warnings: string[];
+}
 
 export interface SuiteRunDetail {
   id: string;
@@ -96,6 +115,7 @@ export interface SuiteRunDetail {
   status: RunStatus;
   case_count: number;
   seed: number;
+  llm_mode?: LlmMode;
   cases: { id: string; name: string }[];
   results: CaseResult[];
   report: RunReport;

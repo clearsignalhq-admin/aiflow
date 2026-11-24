@@ -2612,3 +2612,13 @@ body {
 .export-modal .modal-body { overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
 .export-notes { margin: 0; padding-left: 20px; font-size: 12px; line-height: 1.5; opacity: 0.85; }
 .export-done { font-size: 12px; }
+
+/* ── Real-model suite runs ─────────────────────────────────────────── */
+.suite-mode { border: 1px solid var(--border-md, #333); border-radius: 6px; padding: 6px 10px; display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
+.suite-mode label { cursor: pointer; }
+.suite-estimate { font-size: 12px; padding: 6px 10px; border-radius: 6px; background: rgba(96, 165, 250, 0.1); display: flex; flex-direction: column; gap: 2px; }
+.suite-estimate--blocked { background: rgba(245, 158, 11, 0.12); color: #f59e0b; }
+.suite-real-badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: rgba(168, 85, 247, 0.18); color: #c084fc; }
+
+.export-targets { margin: 0; }
+.export-target { display: block; padding: 3px 0; cursor: pointer; font-size: 12px; }

@@ -2,7 +2,7 @@ import { API_BASE } from '../config';
 import { formatApiError } from '../utils/apiError';
 import type { Workflow } from '../models/workflow';
 import type {
-  CaseResult, SuiteCase, SuiteDetail, SuiteRunDetail, SuiteRunSummary, SuiteSummary,
+  CaseResult, LlmMode, RunEstimate, SuiteCase, SuiteDetail, SuiteRunDetail, SuiteRunSummary, SuiteSummary,
 } from '../models/suites';
 
 export class ApiError extends Error {
@@ -47,8 +47,11 @@ export const suiteApi = {
   remove: (token: string | undefined, suiteId: string) =>
     call<void>(token, `/suites/${suiteId}`, { method: 'DELETE' }),
 
-  createRun: (token: string | undefined, suiteId: string, workflow: Workflow, seed = 0) =>
-    call<SuiteRunDetail>(token, `/suites/${suiteId}/runs`, { method: 'POST', ...body({ workflow, seed }) }),
+  createRun: (token: string | undefined, suiteId: string, workflow: Workflow, seed = 0, llmMode: LlmMode = 'mock') =>
+    call<SuiteRunDetail>(token, `/suites/${suiteId}/runs`, { method: 'POST', ...body({ workflow, seed, llm_mode: llmMode }) }),
+
+  estimateRun: (token: string | undefined, suiteId: string, workflow: Workflow, llmMode: LlmMode) =>
+    call<RunEstimate>(token, `/suites/${suiteId}/runs/estimate`, { method: 'POST', ...body({ workflow, llm_mode: llmMode }) }),
 
   runCase: (token: string | undefined, runId: string, caseId: string) =>
     call<CaseResult>(token, `/suite-runs/${runId}/cases/${caseId}/run`, { method: 'POST' }),

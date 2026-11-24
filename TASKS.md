@@ -1,5 +1,35 @@
 # AiFlow — Current Iteration
 
+## Iteration 10 — Real Integrations, Real-Model Suites, More Formats, Import
+
+Source: the follow-ups listed after Tasks 51–53 (`BACKLOG.md`).
+
+#### Task 54 — Real Integrations in Exported Code `[x]`
+
+- [x] `connectors.py` in exports: API (httpx; percent-encoded URL values, `env:` headers, JSON body), DATABASE (SQLAlchemy, bound parameters, `env:` connection), knowledge search (embeddings or offline keyword scoring)
+- [x] Mock mode returns fixtures; outside it TOOL/TRANSFORM raise `NotImplementedError`; requirements and `.env.example` follow the steps used
+- [x] Tests run generated projects against a local HTTP server, a SQLite database and a knowledge folder (injection and traversal attempts included)
+
+#### Task 55 — Real-LLM Test Suites `[x]`
+
+- [x] `llm_mode` on suite runs (schema.sql + `update_202611241700.sql`); estimate endpoint; up-front and per-case allowance checks; model calls charged per case; cap of 20 cases per real run
+- [x] UI: simulated/real switch, estimate panel, confirmation, model-call counts in the report
+- [x] Tests use a fake provider; no real API call is ever made
+
+#### Task 56 — More Export Formats `[x]`
+
+- [x] Plain Python (no framework) and MCP tool server alongside LangGraph; `POST /api/workflows/export` with `target`; format picker in the dialog
+- [x] Generated projects run their own tests; branches match the simulator seed for seed; MCP server also verified over stdio with the official client in an isolated environment
+- [ ] OpenAI Agents SDK: **not built**. The SDK is agent-centric rather than graph-based, so the mapping needs design decisions, and it could not be run here to verify
+
+#### Task 57 — Import from LangGraph `[x]`
+
+- [x] `langgraph_importer.py`: reads the code with `ast` (never executes it); exact restore from `workflow.json`; builder calls, step-type guessing, simple routers translated to expressions
+- [x] `POST /api/workflows/import/langgraph` and an Import tab; everything guessed is reported as a warning
+- [x] AiFlow's own generated code reads back with the same step types, edges and labels for all examples
+
+---
+
 ## Iteration 9 — Sharing and Leaving the Tool
 
 Source: `docs/future/2026-11-24 AiFlow - Future Directions.md` (D1, D3, quick wins). Descriptions in `BACKLOG.md` (Tasks 51–53).

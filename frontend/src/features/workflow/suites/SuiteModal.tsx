@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Workflow } from '../../../models/workflow';
-import type { SuiteRunDetail, SuiteRunSummary, SuiteSummary } from '../../../models/suites';
+import type { LlmMode, RunEstimate, SuiteRunDetail, SuiteRunSummary, SuiteSummary } from '../../../models/suites';
 import { useAuth } from '../../../context/AuthContext';
 import { ApiError, suiteApi } from '../../../services/suites';
 import { executeSuite } from '../../../services/suiteExecutor';
@@ -41,6 +41,9 @@ export function SuiteModal({ workflow, onClose }: Props) {
   const [run, setRun] = useState<SuiteRunDetail | null>(null);
   const [pastRuns, setPastRuns] = useState<SuiteRunSummary[]>([]);
   const abortRef = useRef<AbortController | null>(null);
+  const [llmMode, setLlmMode] = useState<LlmMode>('mock');
+  const [estimate, setEstimate] = useState<RunEstimate | null>(null);
+  const [estimating, setEstimating] = useState(false);
 
   const dirty = selectedId !== null && serializeSuite(name, draft) !== savedSnapshot;
   const firstProblem = draft.map((d) => caseProblem(d.data)).find((p) => p !== null) ?? null;
@@ -90,6 +93,20 @@ export function SuiteModal({ workflow, onClose }: Props) {
   }, [token, workflow.id, openSuite]);
 
   useEffect(() => () => abortRef.current?.abort(), []);
+
+  // What a real-model run would use. Asked of the server (it knows the allowance); refreshed when the
+  // saved suite or the workflow changes. Mock runs are free, so nothing is asked for them.
+  useEffect(() => {
+    if (llmMode !== 'real' || !selectedId || savedSnapshot === '') return;
+    let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- loading state for the request below
+    setEstimating(true);
+    suiteApi.estimateRun(token, selectedId, workflow, 'real')
+      .then((e) => { if (!cancelled) setEstimate(e); })
+      .catch((err) => { if (!cancelled) setEstimate({ cases: 0, llm_mode: 'real', llm_calls_per_case_max: 0, llm_calls_max: 0, cost_usd_max: 0, executions_needed: 0, executions_remaining: null, llm_requests_remaining: null, allowed: false, reason: message(err), warnings: [] }); })
+      .finally(() => { if (!cancelled) setEstimating(false); });
+    return () => { cancelled = true; };
+  }, [llmMode, selectedId, savedSnapshot, workflow, token]);
 
   const confirmDiscard = () => !dirty || window.confirm('You have unsaved changes to this suite. Discard them?');
 
@@ -174,6 +191,15 @@ export function SuiteModal({ workflow, onClose }: Props) {
     if (!selectedId || running) return;
     if (dirty && !(await save())) return;
     if (draft.length === 0) { setError('Add at least one test case first.'); return; }
+    if (llmMode === 'real') {
+      if (!estimate || !estimate.allowed) { setError(estimate?.reason ?? 'The estimate is not ready yet.'); return; }
+      const ok = window.confirm(
+        `Run ${estimate.cases} case${estimate.cases === 1 ? '' : 's'} with the real AI model?\n\n` +
+        `Up to ${estimate.llm_calls_max} model calls (about $${estimate.cost_usd_max.toFixed(3)}), counted against your daily AI request allowance. ` +
+        'Results can differ between runs.',
+      );
+      if (!ok) return;
+    }
 
     setError('');
     setRunning(true);
@@ -181,7 +207,7 @@ export function SuiteModal({ workflow, onClose }: Props) {
     abortRef.current = controller;
     let runId: string | null = null;
     try {
-      const created = await suiteApi.createRun(token, selectedId, workflow);
+      const created = await suiteApi.createRun(token, selectedId, workflow, 0, llmMode);
       runId = created.id;
       setRun(created);
 
@@ -284,14 +310,53 @@ export function SuiteModal({ workflow, onClose }: Props) {
                 <button className="btn btn-ghost" onClick={() => void save()} disabled={!dirty || busy || running}>
                   {dirty ? 'Save changes' : 'Saved'}
                 </button>
-                <button className="btn btn-primary" onClick={() => void handleRun()} disabled={running || busy || draft.length === 0}>
-                  {running ? <><span className="spinner" /> Running…</> : `▶ Run ${draft.length} case${draft.length === 1 ? '' : 's'}`}
+                <button
+                  className="btn btn-primary"
+                  onClick={() => void handleRun()}
+                  disabled={running || busy || draft.length === 0 || (llmMode === 'real' && (estimating || !estimate?.allowed))}
+                >
+                  {running ? <><span className="spinner" /> Running…</>
+                    : `▶ Run ${draft.length} case${draft.length === 1 ? '' : 's'}${llmMode === 'real' ? ' with the real model' : ''}`}
                 </button>
                 {running && (
                   <button className="btn btn-ghost" onClick={() => abortRef.current?.abort()}>Stop</button>
                 )}
-                <span className="suite-hint">Mock mode · each case uses one of your daily simulations</span>
+                <span className="suite-hint">
+                  {llmMode === 'real' ? 'Each case uses one daily simulation plus its model calls' : 'Mock mode · each case uses one of your daily simulations'}
+                </span>
               </div>
+
+              <fieldset className="suite-mode" disabled={running}>
+                <legend className="prop-label">AI model</legend>
+                <label>
+                  <input type="radio" name="suite-llm-mode" checked={llmMode === 'mock'} onChange={() => setLlmMode('mock')} />
+                  {' '}Simulated (free, same result every time)
+                </label>
+                <label>
+                  <input type="radio" name="suite-llm-mode" checked={llmMode === 'real'} onChange={() => setLlmMode('real')} />
+                  {' '}Real model (uses your AI request allowance; answers can vary)
+                </label>
+              </fieldset>
+
+              {llmMode === 'real' && (
+                <div className={`suite-estimate${estimate && !estimate.allowed ? ' suite-estimate--blocked' : ''}`} data-testid="estimate">
+                  {estimating && <span>Estimating…</span>}
+                  {!estimating && estimate && (
+                    <>
+                      {estimate.allowed ? (
+                        <div>
+                          Up to <strong>{estimate.llm_calls_max}</strong> model calls
+                          ({estimate.llm_calls_per_case_max} per case, about ${estimate.cost_usd_max.toFixed(3)})
+                          {estimate.llm_requests_remaining !== null && <> · {estimate.llm_requests_remaining} AI requests left today</>}
+                        </div>
+                      ) : (
+                        <div role="alert">{estimate.reason}</div>
+                      )}
+                      {estimate.warnings.map((w) => <div key={w} className="suite-hint">{w}</div>)}
+                    </>
+                  )}
+                </div>
+              )}
             </>
           )}
 

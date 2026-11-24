@@ -16,3 +16,5 @@ slowapi==0.1.9
 mangum==0.17.0
 # Dev only: the exporter tests run generated LangGraph projects (not needed in the Lambda package)
 langgraph>=1.0,<2
+# Dev only: the exporter tests run generated projects that use a real database connector (SQLite)
+sqlalchemy>=2,<3

@@ -88,6 +88,22 @@ class SuiteList(BaseModel):
 class CreateSuiteRunRequest(BaseModel):
     workflow: Workflow
     seed: int = Field(default=0, ge=0, le=2**31 - 1)
+    llm_mode: Literal["mock", "real"] = "mock"     # "real" calls the AI model and uses LLM-request allowance
+
+
+class RunEstimate(BaseModel):
+    """What a run would use, before it starts."""
+    cases: int
+    llm_mode: Literal["mock", "real"]
+    llm_calls_per_case_max: int
+    llm_calls_max: int
+    cost_usd_max: float                       # rough: fixed per-call assumption, not a quote
+    executions_needed: int
+    executions_remaining: Optional[int] = None     # None = unlimited
+    llm_requests_remaining: Optional[int] = None   # None = unlimited
+    allowed: bool
+    reason: Optional[str] = None
+    warnings: list[str] = Field(default_factory=list)
 
 
 class CaseRef(BaseModel):
@@ -108,6 +124,7 @@ class CaseResult(BaseModel):
     case_name: str
     status: Literal["passed", "failed", "error"]
     duration_ms: int
+    llm_calls: int = 0                      # model calls this case made (real mode)
     error: Optional[str] = None
     error_node_id: Optional[str] = None
     assertion_results: list[AssertionOutcome] = Field(default_factory=list)
@@ -132,6 +149,7 @@ class RunReport(BaseModel):
     failed: int
     errors: int
     pass_rate: Optional[float] = None        # passed / completed, None until a case has finished
+    llm_calls: int = 0
     coverage: Coverage
 
 
@@ -153,6 +171,7 @@ class SuiteRunDetail(BaseModel):
     status: Literal["running", "complete", "cancelled", "failed"]
     case_count: int
     seed: int
+    llm_mode: Literal["mock", "real"] = "mock"
     cases: list[CaseRef]
     results: list[CaseResult]
     report: RunReport

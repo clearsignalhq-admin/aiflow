@@ -628,7 +628,7 @@ export default function WorkflowApp() {
       </div>
 
       {showExportCode && (
-        <ExportCodeModal workflow={workflow} onClose={() => setShowExportCode(false)} />
+        <ExportCodeModal workflow={workflow} onImport={handleExampleSelected} onClose={() => setShowExportCode(false)} />
       )}
 
       {showExplain && (

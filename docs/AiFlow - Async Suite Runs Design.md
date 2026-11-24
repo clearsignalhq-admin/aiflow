@@ -138,3 +138,13 @@ Consequences: suites run in **mock mode only** for now (a real-LLM case would ne
 - **API:** `GET/POST /api/suites`, `GET/PUT/DELETE /api/suites/{id}`, `POST /api/suites/{id}/runs`, `GET /api/suites/{id}/runs`, `GET /api/suite-runs/{id}`, `POST /api/suite-runs/{id}/cancel`, `POST /api/suite-runs/{id}/cases/{case_id}/run`.
 - **Job rules:** created in `running`; becomes `complete` when every case has a result, `cancelled` on request, and `failed` if it is still unfinished 15 minutes after creation (settled lazily on the next read). Repeating a case returns the stored result and is not charged again. A run is refused for a different workflow, an empty suite, an unsimulatable workflow (cycle, no START/END), or an exceeded allowance.
 - **Coverage is exact:** steps now record the edges actually followed (`next_ids`), so "branches never taken" is not guessed from visited nodes.
+
+### Real-model runs (Task 55)
+
+Decision 1 (§8) kept suites mock-only; real runs were added once the accounting existed.
+
+- A run records `llm_mode` (`mock` or `real`) when created. `POST /suites/{id}/runs/estimate` returns, without reserving anything, the most model calls one case can make (the worst route through the workflow, from the linter's path estimates), the rough cost, the remaining executions and AI requests today, and whether the run is allowed and why not.
+- Creating a real run is refused (422/429/503) if it has more than 20 cases, no model is configured, or the run could not fit the day's execution or AI-request allowance.
+- Before **each** case the AI-request allowance is checked again (other activity can have used it). After each case the model calls it made are added with the atomic counter (`increment_usage(..., "llm_requests", n)`); a case that times out is charged the most it could have used, since its trace is lost.
+- Cases still run one per request, bounded by the 25 s simulation guard, so workflows with many sequential model calls can time out; the estimate warns when a case can make more than five.
+

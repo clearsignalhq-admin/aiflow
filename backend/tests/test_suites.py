@@ -186,7 +186,7 @@ def test_build_report_with_no_results():
 
 class FakeDB:
     def __init__(self):
-        self.suites, self.runs, self.results, self.usage = {}, {}, {}, {}
+        self.suites, self.runs, self.results, self.usage, self.llm_usage = {}, {}, {}, {}, {}
 
     @staticmethod
     def _now():
@@ -228,8 +228,8 @@ class FakeDB:
 
     # runs
     async def insert_suite_run(self, record):
-        row = {**copy.deepcopy(record), "id": str(uuid.uuid4()), "status": "running", "created_at": self._now(),
-               "finished_at": None, "note": None}
+        row = {"llm_mode": "mock", **copy.deepcopy(record), "id": str(uuid.uuid4()), "status": "running",
+               "created_at": self._now(), "finished_at": None, "note": None}
         self.runs[row["id"]] = row
         return copy.deepcopy(row)
 
@@ -275,11 +275,12 @@ class FakeDB:
 
     # usage
     async def get_usage_today(self, user_id):
-        return {"executions": self.usage.get(user_id, 0), "llm_requests": 0}
+        return {"executions": self.usage.get(user_id, 0), "llm_requests": self.llm_usage.get(user_id, 0)}
 
     async def increment_usage(self, user_id, field, by=1):
-        assert field == "executions"
-        self.usage[user_id] = self.usage.get(user_id, 0) + by
+        assert field in ("executions", "llm_requests")
+        counter = self.usage if field == "executions" else self.llm_usage
+        counter[user_id] = counter.get(user_id, 0) + by
 
 
 @pytest.fixture

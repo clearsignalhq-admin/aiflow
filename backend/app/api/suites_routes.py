@@ -17,11 +17,13 @@ from app.core import supabase_client as db
 from app.core.config import settings
 from app.models.user import UserProfile
 from app.models.workflow import Workflow
+from app.providers.factory import get_provider
 from app.schemas.suites import (
     MAX_SUITE_BYTES,
     CaseRef,
     CaseResult,
     CreateSuiteRunRequest,
+    RunEstimate,
     SuiteCase,
     SuiteDetail,
     SuiteList,
@@ -32,7 +34,7 @@ from app.schemas.suites import (
     SuiteWrite,
 )
 from app.services.simulator import SimulationError, validate_for_simulation
-from app.services.suite_runner import build_report, run_case
+from app.services.suite_runner import build_report, llm_use_per_case, run_case
 
 router = APIRouter(prefix="/api")
 logger = logging.getLogger(__name__)
@@ -115,6 +117,58 @@ async def _check_execution_budget(user: UserProfile, needed: int) -> None:
         )
 
 
+def _llm_limit(user: UserProfile) -> int:
+    return settings.demo_max_llm_requests_per_day if user.role == "demo" else settings.approved_max_llm_requests_per_day
+
+
+def _provider_available() -> bool:
+    try:
+        get_provider()
+        return True
+    except RuntimeError:
+        return False
+
+
+async def _estimate(user: UserProfile, workflow: Workflow, case_count: int, llm_mode: str) -> tuple[RunEstimate, int]:
+    """What a run would use, whether it fits today's allowance, and the HTTP status to refuse it with if not."""
+    real = llm_mode == "real"
+    per_case, per_case_cost = llm_use_per_case(workflow) if real else (0, 0.0)
+    usage = await db.get_usage_today(user.id)
+    exec_limit, llm_limit = _daily_limit(user), _llm_limit(user)
+    exec_left = None if exec_limit <= 0 else max(0, exec_limit - usage.get("executions", 0))
+    llm_left = None if llm_limit <= 0 else max(0, llm_limit - usage.get("llm_requests", 0))
+    llm_needed = per_case * case_count
+
+    reason, blocked = None, 0
+    if real and case_count > settings.real_suite_max_cases:
+        reason, blocked = (f"A run with the real AI model can have at most {settings.real_suite_max_cases} cases "
+                           f"(this suite has {case_count}). Run a smaller suite, or use mock mode."), 422
+    elif real and not _provider_available():
+        reason, blocked = "No AI model is configured on the server, so a real-model run is not possible.", 503
+    elif exec_left is not None and case_count > exec_left:
+        reason, blocked = (f"This run needs {case_count} simulation(s) but only {exec_left} of your daily {exec_limit} remain. "
+                           "Try again tomorrow or use fewer cases."), 429
+    elif real and llm_left is not None and llm_needed > llm_left:
+        reason, blocked = (f"This run could make up to {llm_needed} AI model call(s) but only {llm_left} of your daily "
+                           f"{llm_limit} remain. Try again tomorrow, use fewer cases, or use mock mode."), 429
+
+    warnings: list[str] = []
+    if real and per_case > 5:
+        warnings.append(f"A case can make {per_case} model calls; cases that take longer than "
+                        f"{settings.simulation_timeout_seconds:g}s are stopped as errors.")
+    if real and per_case == 0:
+        warnings.append("This workflow has no AI model steps, so a real-model run behaves like a mock run.")
+    if real:
+        warnings.append("Results can differ between runs because the model's answers vary.")
+
+    return RunEstimate(
+        cases=case_count, llm_mode="real" if real else "mock", llm_calls_per_case_max=per_case, llm_calls_max=llm_needed,
+        cost_usd_max=round(per_case_cost * case_count, 6), executions_needed=case_count,
+        executions_remaining=exec_left, llm_requests_remaining=llm_left,
+        allowed=blocked == 0, reason=reason, warnings=warnings,
+    ), blocked
+
+
 def _parse_time(value: str) -> datetime:
     return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
@@ -147,6 +201,7 @@ def _run_detail(run: dict[str, Any], result_rows: list[dict[str, Any]]) -> Suite
     results.sort(key=lambda r: order.get(r.case_id, 10**6))
     return SuiteRunDetail(
         id=run["id"], suite_id=run["suite_id"], status=run["status"], case_count=run["case_count"], seed=run["seed"],
+        llm_mode=run.get("llm_mode") or "mock",
         cases=[CaseRef(id=c["id"], name=c["name"]) for c in run["cases"]],
         results=results,
         report=build_report(run["workflow"], run["case_count"], [r.model_dump() for r in results]),
@@ -204,8 +259,7 @@ async def delete_suite(suite_id: str, user: ApprovedUser):
 
 # ── Runs ─────────────────────────────────────────────────────────────────────
 
-@router.post("/suites/{suite_id}/runs", response_model=SuiteRunDetail, status_code=status.HTTP_201_CREATED)
-async def create_suite_run(suite_id: str, body: CreateSuiteRunRequest, user: ApprovedUser):
+async def _checked_run_inputs(user: UserProfile, suite_id: str, body: CreateSuiteRunRequest) -> dict[str, Any]:
     suite = await _owned_suite(user, suite_id)
     cases = suite.get("cases") or []
     if not cases:
@@ -218,10 +272,27 @@ async def create_suite_run(suite_id: str, body: CreateSuiteRunRequest, user: App
         validate_for_simulation(body.workflow)
     except SimulationError as exc:
         raise HTTPException(status_code=422, detail=f"The workflow cannot be simulated: {exc}")
-    await _check_execution_budget(user, len(cases))
+    return suite
+
+
+@router.post("/suites/{suite_id}/runs/estimate", response_model=RunEstimate)
+async def estimate_suite_run(suite_id: str, body: CreateSuiteRunRequest, user: ApprovedUser):
+    """What a run would use and whether it fits today's allowance. Nothing is reserved or charged."""
+    suite = await _checked_run_inputs(user, suite_id, body)
+    estimate, _ = await _estimate(user, body.workflow, len(suite["cases"]), body.llm_mode)
+    return estimate
+
+
+@router.post("/suites/{suite_id}/runs", response_model=SuiteRunDetail, status_code=status.HTTP_201_CREATED)
+async def create_suite_run(suite_id: str, body: CreateSuiteRunRequest, user: ApprovedUser):
+    suite = await _checked_run_inputs(user, suite_id, body)
+    cases = suite["cases"]
+    estimate, blocked = await _estimate(user, body.workflow, len(cases), body.llm_mode)
+    if blocked:
+        raise HTTPException(status_code=blocked, detail=estimate.reason)
 
     row = await db.insert_suite_run({
-        "user_id": user.id, "suite_id": suite["id"], "case_count": len(cases), "seed": body.seed,
+        "user_id": user.id, "suite_id": suite["id"], "case_count": len(cases), "seed": body.seed, "llm_mode": body.llm_mode,
         "workflow": body.workflow.model_dump(mode="json"), "cases": cases,
     })
     try:
@@ -276,8 +347,22 @@ async def run_suite_case(run_id: str, case_id: str, user: ApprovedUser):
     if run["status"] != "running":
         raise HTTPException(status_code=409, detail=f"This run is {run['status']}; no more cases can be executed.")
 
+    workflow = Workflow.model_validate(run["workflow"])
+    llm_mode = run.get("llm_mode") or "mock"
+    max_calls = 0
     await _check_execution_budget(user, 1)
-    result = await run_case(Workflow.model_validate(run["workflow"]), run["cases"][index], index, run["seed"])
+    if llm_mode == "real":
+        # The allowance can have been used up elsewhere since the run was created; check before each case.
+        max_calls, _ = llm_use_per_case(workflow)
+        llm_limit = _llm_limit(user)
+        if llm_limit > 0:
+            used = (await db.get_usage_today(user.id)).get("llm_requests", 0)
+            if used + max_calls > llm_limit:
+                raise HTTPException(status_code=429, detail=f"Your daily AI request limit ({llm_limit}) would be exceeded. Try again tomorrow.")
+        if not _provider_available():
+            raise HTTPException(status_code=503, detail="No AI model is configured on the server.")
+
+    result = await run_case(workflow, run["cases"][index], index, run["seed"], llm_mode=llm_mode, timeout_llm_calls=max_calls)
 
     inserted = await db.insert_case_result({
         "run_id": run["id"], "case_id": case_id, "user_id": user.id,
@@ -285,6 +370,8 @@ async def run_suite_case(run_id: str, case_id: str, user: ApprovedUser):
     })
     if inserted:                                  # only the request that stored the result is charged
         await db.increment_usage(user.id, "executions")
+        if result.llm_calls > 0:
+            await db.increment_usage(user.id, "llm_requests", result.llm_calls)
         results = await db.list_case_results(user.id, run["id"])
         await _settle(user, run, results)
     else:                                         # lost a race with an identical request

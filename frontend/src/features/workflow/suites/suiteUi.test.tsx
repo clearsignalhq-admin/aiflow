@@ -8,7 +8,7 @@ import { ApiError } from '../../../services/suites';
 import { NodeType } from '../../../models/workflow';
 import type { Workflow } from '../../../models/workflow';
 import type {
-  Assertion, CaseResult, SuiteDetail, SuiteRunDetail,
+  Assertion, CaseResult, RunEstimate, SuiteDetail, SuiteRunDetail,
 } from '../../../models/suites';
 
 // ── Mocks ────────────────────────────────────────────────────────────────────
@@ -26,6 +26,7 @@ const api = {
   update: vi.fn(),
   remove: vi.fn(),
   createRun: vi.fn(),
+  estimateRun: vi.fn(),
   getRun: vi.fn(),
   cancelRun: vi.fn(),
   listRuns: vi.fn(),
@@ -44,6 +45,7 @@ vi.mock('../../../services/suites', async (importOriginal) => {
       update: (...a: unknown[]) => api.update(...a),
       remove: (...a: unknown[]) => api.remove(...a),
       createRun: (...a: unknown[]) => api.createRun(...a),
+      estimateRun: (...a: unknown[]) => api.estimateRun(...a),
       getRun: (...a: unknown[]) => api.getRun(...a),
       cancelRun: (...a: unknown[]) => api.cancelRun(...a),
       listRuns: (...a: unknown[]) => api.listRuns(...a),
@@ -365,7 +367,7 @@ describe('SuiteModal — running', () => {
     fireEvent.click(screen.getByRole('button', { name: /Run 2 cases/ }));
 
     await waitFor(() => expect(screen.getByTestId('pass-rate')).toHaveTextContent('50%'));
-    expect(api.createRun).toHaveBeenCalledWith('tok', 's1', workflow);
+    expect(api.createRun).toHaveBeenCalledWith('tok', 's1', workflow, 0, 'mock');
     expect([...api.runCaseLog].sort()).toEqual(['c1', 'c2']);
     expect(api.cancelRun).not.toHaveBeenCalled();
     expect(await screen.findByRole('button', { name: /Run 2 cases/ })).toBeEnabled();
@@ -411,5 +413,101 @@ describe('SuiteModal — running', () => {
     fireEvent.click(button);
     expect(await screen.findByTestId('pass-rate')).toHaveTextContent('50%');
     expect(api.getRun).toHaveBeenCalledWith('tok', 'old');
+  });
+});
+
+
+// ═══════════════ Real-model runs ═══════════════
+
+describe('SuiteModal — real model', () => {
+  const estimate = (over: Partial<RunEstimate> = {}): RunEstimate => ({
+    cases: 2, llm_mode: 'real', llm_calls_per_case_max: 3, llm_calls_max: 6, cost_usd_max: 0.012,
+    executions_needed: 2, executions_remaining: null, llm_requests_remaining: 40, allowed: true, reason: null,
+    warnings: ["Results can differ between runs because the model's answers vary."], ...over,
+  });
+  const chooseReal = () => fireEvent.click(screen.getByLabelText(/Real model/));
+
+  it('asks nothing of the server while the run is simulated', async () => {
+    await open();
+    expect(screen.getByLabelText(/Simulated/)).toBeChecked();
+    expect(screen.queryByTestId('estimate')).toBeNull();
+    expect(api.estimateRun).not.toHaveBeenCalled();
+  });
+
+  it('shows what a real run would use, with the remaining allowance and warnings', async () => {
+    api.estimateRun.mockResolvedValue(estimate());
+    await open();
+    chooseReal();
+    const box = await screen.findByTestId('estimate');
+    await waitFor(() => expect(box).toHaveTextContent('Up to 6 model calls (3 per case, about $0.012)'));
+    expect(api.estimateRun).toHaveBeenCalledWith('tok', 's1', workflow, 'real');
+    expect(box).toHaveTextContent('40 AI requests left today');
+    expect(box).toHaveTextContent(/answers vary/);
+    expect(screen.getByRole('button', { name: /Run 2 cases with the real model/ })).toBeEnabled();
+  });
+
+  it('blocks the run and says why when the estimate is not allowed', async () => {
+    api.estimateRun.mockResolvedValue(estimate({ allowed: false, reason: 'This run could make up to 6 AI model call(s) but only 2 of your daily 20 remain.' }));
+    await open();
+    chooseReal();
+    expect(await screen.findByRole('alert')).toHaveTextContent('only 2 of your daily 20 remain');
+    expect(screen.getByRole('button', { name: /Run 2 cases with the real model/ })).toBeDisabled();
+  });
+
+  it('shows an estimate failure as a blocked run instead of crashing', async () => {
+    api.estimateRun.mockImplementation(async () => { throw new ApiError(503, 'No AI model is configured on the server.'); });
+    await open();
+    chooseReal();
+    expect(await screen.findByRole('alert')).toHaveTextContent('No AI model is configured');
+    expect(screen.getByRole('button', { name: /Run 2 cases with the real model/ })).toBeDisabled();
+  });
+
+  it('asks for confirmation (stating the cost) and does nothing if declined', async () => {
+    api.estimateRun.mockResolvedValue(estimate());
+    await open();
+    chooseReal();
+    await waitFor(() => expect(screen.getByTestId('estimate')).toHaveTextContent('Up to'));
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    fireEvent.click(screen.getByRole('button', { name: /Run 2 cases with the real model/ }));
+    expect(confirm).toHaveBeenCalledWith(expect.stringContaining('Up to 6 model calls (about $0.012)'));
+    expect(api.createRun).not.toHaveBeenCalled();
+    expect(api.runCaseLog).toEqual([]);
+  });
+
+  it('runs with the real model once confirmed and labels the report', async () => {
+    api.estimateRun.mockResolvedValue(estimate());
+    api.createRun.mockResolvedValue(run({ llm_mode: 'real' }));
+    api.runCaseImpl = async (id) => result(id, id, 'passed', { llm_calls: 3 });
+    api.getRun.mockResolvedValue(run({
+      status: 'complete', llm_mode: 'real', results: [result('c1', 'First', 'passed', { llm_calls: 3 }), result('c2', 'Second', 'passed', { llm_calls: 3 })],
+      report: report({ llm_calls: 6 }),
+    }));
+    await open();
+    chooseReal();
+    await waitFor(() => expect(screen.getByTestId('estimate')).toHaveTextContent('Up to'));
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    fireEvent.click(screen.getByRole('button', { name: /Run 2 cases with the real model/ }));
+
+    expect(await screen.findByTestId('real-badge')).toHaveTextContent('real model · 6 calls');
+    expect(api.createRun).toHaveBeenCalledWith('tok', 's1', workflow, 0, 'real');
+    expect(screen.getAllByText('3 model calls')).toHaveLength(2);
+  });
+
+  it('does not show the real-model badge for simulated runs', () => {
+    render(<SuiteReport nodeNames={{}} run={run({ status: 'complete', llm_mode: 'mock', results: [result('c1', 'First')] })} />);
+    expect(screen.queryByTestId('real-badge')).toBeNull();
+    expect(screen.queryByText(/model call/)).toBeNull();
+  });
+
+  it('re-estimates when the suite is saved', async () => {
+    api.estimateRun.mockResolvedValue(estimate());
+    api.update.mockImplementation(async (_t: string, _id: string, name: string, cases: SuiteDetail['cases']) => ({ ...suite(cases), name }));
+    await open();
+    chooseReal();
+    await waitFor(() => expect(screen.getByTestId('estimate')).toHaveTextContent('Up to'));
+    expect(api.estimateRun).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByText('+ Add case'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(api.estimateRun).toHaveBeenCalledTimes(2));
   });
 });

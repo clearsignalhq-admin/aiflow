@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     max_suites_per_user: int = 20
     max_suite_runs_per_suite: int = 20     # newest runs kept per suite
     suite_job_stale_minutes: int = 15      # a running job older than this is marked failed
+    real_suite_max_cases: int = 20         # most cases in a run that calls the real AI model
 
     # Persisted simulation runs
     max_runs_per_user: int = 50

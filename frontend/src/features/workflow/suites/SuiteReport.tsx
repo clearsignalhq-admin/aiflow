@@ -19,6 +19,7 @@ function ResultRow({ result, nodeNames }: { result: CaseResult; nodeNames: Recor
         <span className="suite-result-icon" aria-hidden="true">{ICON[result.status]}</span>
         <span className="suite-result-name">{result.case_name}</span>
         <span className="suite-result-status">{result.status}</span>
+        {!!result.llm_calls && <span className="suite-result-time">{result.llm_calls} model call{result.llm_calls === 1 ? '' : 's'}</span>}
         <span className="suite-result-time">{result.duration_ms} ms</span>
       </button>
       {open && (
@@ -73,6 +74,11 @@ export function SuiteReport({ run, nodeNames }: Props) {
           {pending > 0 && <>{' · '}{pending} pending</>}
         </span>
         <span className={`trace-status trace-status--${run.status === 'complete' ? 'complete' : run.status === 'running' ? 'running' : 'error'}`}>{run.status}</span>
+        {run.llm_mode === 'real' && (
+          <span className="suite-real-badge" data-testid="real-badge" title="This run called the real AI model, so results can differ between runs">
+            real model · {results.reduce((n, r) => n + (r.llm_calls ?? 0), 0)} calls
+          </span>
+        )}
       </div>
 
       {run.note && <div className="suite-result-error" role="note">{run.note}</div>}

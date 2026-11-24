@@ -1,8 +1,12 @@
-"""Run test-suite cases and summarise a run (Task 50).
+"""Run test-suite cases and summarise a run (Tasks 50, 55).
 
-Each case is one mock-mode simulation of the workflow snapshot. Cases run auto-approve HITL and
-expression routing (a suite must never pause), seeded so results are reproducible: a case uses its
-own ``seed`` or ``run_seed + index``. Real-LLM suites are intentionally not supported yet.
+Each case is one simulation of the workflow snapshot. Cases run auto-approve HITL and expression routing
+(a suite must never pause), seeded so results are reproducible: a case uses its own ``seed`` or
+``run_seed + index``.
+
+``llm_mode="mock"`` (default) is free and exactly reproducible. ``llm_mode="real"`` calls the AI model for
+every LLM step the case reaches: results can vary between runs, each model call is billed against the
+user's LLM-request allowance, and a pinned ``mock_output`` on an LLM step is ignored.
 """
 import asyncio
 import json
@@ -22,6 +26,7 @@ from app.schemas.simulation import (
 )
 from app.schemas.suites import CaseResult, Coverage, RunReport
 from app.services.assertions import AssertionContext, evaluate_assertions
+from app.services.linter import lint_workflow
 from app.services.simulator import SimulationError, simulate
 
 logger = logging.getLogger(__name__)
@@ -30,10 +35,10 @@ _MAX_OUTPUT_BYTES = 5_000
 _MAX_WARNINGS = 10
 
 
-def case_settings(case: dict[str, Any], index: int, run_seed: int) -> SimulationSettings:
+def case_settings(case: dict[str, Any], index: int, run_seed: int, llm_mode: str = "mock") -> SimulationSettings:
     seed = case.get("seed")
     return SimulationSettings(
-        llm_mode=LLMMode.MOCK,
+        llm_mode=LLMMode.REAL if llm_mode == "real" else LLMMode.MOCK,
         hitl_mode=HITLMode.AUTO_APPROVE,
         condition_mode=ConditionMode.EXPRESSION,
         evaluate=False,
@@ -60,10 +65,15 @@ def _compact_output(output: Any) -> Any:
     return {"_truncated": True, "preview": text[:500]}
 
 
+def _llm_calls(trace: Optional[ExecutionTrace]) -> int:
+    """Model calls a real-mode trace made: every LLM step that started, including one that failed."""
+    return sum(1 for s in trace.steps if s.node_type == NodeType.LLM.value) if trace else 0
+
+
 def _error_result(case: dict[str, Any], started: float, message: str, node_id: Optional[str] = None,
-                  trace: Optional[ExecutionTrace] = None) -> CaseResult:
+                  trace: Optional[ExecutionTrace] = None, llm_calls: int = 0) -> CaseResult:
     return CaseResult(
-        case_id=case["id"], case_name=case["name"], status="error",
+        case_id=case["id"], case_name=case["name"], status="error", llm_calls=llm_calls,
         duration_ms=int((time.perf_counter() - started) * 1000), error=message, error_node_id=node_id,
         path=[s.node_id for s in trace.steps] if trace else [],
         edges_taken=_edges(trace) if trace else [],
@@ -75,28 +85,35 @@ def _edges(trace: ExecutionTrace) -> list[str]:
 
 
 async def run_case(workflow: Workflow, case: dict[str, Any], index: int, run_seed: int,
-                   timeout: Optional[float] = None) -> CaseResult:
-    """Simulate one case and evaluate its assertions. Never raises: problems become ``error`` results."""
+                   timeout: Optional[float] = None, llm_mode: str = "mock",
+                   timeout_llm_calls: int = 0) -> CaseResult:
+    """Simulate one case and evaluate its assertions. Never raises: problems become ``error`` results.
+
+    ``timeout_llm_calls`` is what to report as used when the case times out (its trace is lost, so the
+    caller passes the most the workflow could have called, which is the safe amount to charge).
+    """
+    real = llm_mode == "real"
     limit = timeout if timeout is not None else app_settings.simulation_timeout_seconds
     started = time.perf_counter()
     case_input = case.get("input") if isinstance(case.get("input"), dict) else {}
     try:
         trace = await asyncio.wait_for(
-            simulate(workflow, case_input, case_settings(case, index, run_seed)), timeout=limit,
+            simulate(workflow, case_input, case_settings(case, index, run_seed, llm_mode)), timeout=limit,
         )
     except asyncio.TimeoutError:
-        return _error_result(case, started, f"Timed out after {limit:g}s")
+        return _error_result(case, started, f"Timed out after {limit:g}s", llm_calls=timeout_llm_calls if real else 0)
     except SimulationError as exc:
         return _error_result(case, started, str(exc))
     except Exception as exc:  # a broken case must not break the run
         logger.warning("Suite case %s failed unexpectedly: %s", case.get("id"), exc)
-        return _error_result(case, started, f"Unexpected error: {exc}")
+        return _error_result(case, started, f"Unexpected error: {exc}", llm_calls=timeout_llm_calls if real else 0)
 
+    calls = _llm_calls(trace) if real else 0
     if trace.status != "complete":
         failing = next((s for s in trace.steps if s.status == NodeExecutionStatus.ERROR), None)
         return _error_result(
             case, started, failing.error if failing and failing.error else f"Simulation ended as '{trace.status}'",
-            node_id=failing.node_id if failing else None, trace=trace,
+            node_id=failing.node_id if failing else None, trace=trace, llm_calls=calls,
         )
 
     output = final_output(trace)
@@ -107,12 +124,29 @@ async def run_case(workflow: Workflow, case: dict[str, Any], index: int, run_see
     )
     warnings = [f"{s.node_name}: {w}" for s in trace.steps for w in s.warnings][:_MAX_WARNINGS]
     return CaseResult(
-        case_id=case["id"], case_name=case["name"],
+        case_id=case["id"], case_name=case["name"], llm_calls=calls,
         status="passed" if all(o.passed for o in outcomes) else "failed",
         duration_ms=int((time.perf_counter() - started) * 1000),
         assertion_results=[o.model_dump() for o in outcomes],
         output=_compact_output(output), path=path, edges_taken=_edges(trace), warnings=warnings,
     )
+
+
+def llm_use_per_case(workflow: Workflow) -> tuple[int, float]:
+    """The most model calls, and the rough cost, one case can use: the worst route through the workflow.
+
+    Falls back to every LLM step in the workflow when routes cannot be enumerated (for example a cycle).
+    """
+    llm_ids = {n.id for n in workflow.nodes if n.type == NodeType.LLM}
+    estimates = lint_workflow(workflow).estimates
+    if not estimates:
+        calls = len(llm_ids)
+        return calls, round(calls * _COST_PER_LLM_CALL, 6)
+    best = max(estimates, key=lambda e: (sum(1 for i in e.node_ids if i in llm_ids), e.cost_usd))
+    return sum(1 for i in best.node_ids if i in llm_ids), best.cost_usd
+
+
+_COST_PER_LLM_CALL = 0.002      # keep in step with the per-LLM-call assumption in services/linter.py
 
 
 # ── Aggregation ──────────────────────────────────────────────────────────────
@@ -149,6 +183,7 @@ def build_report(workflow: dict[str, Any], case_count: int, results: list[dict[s
         total=case_count, completed=completed,
         passed=counts["passed"], failed=counts["failed"], errors=counts["error"],
         pass_rate=round(counts["passed"] / completed, 4) if completed else None,
+        llm_calls=sum(int(r.get("llm_calls") or 0) for r in results),
         coverage=Coverage(
             node_visits=node_visits,
             never_visited=[nid for nid in nodes if node_visits.get(nid, 0) == 0],

@@ -34,6 +34,7 @@ from typing import Any, Optional
 from app.models.workflow import NodeType, Workflow, WorkflowNode
 from app.services import assertions as assertions_module
 from app.services import expressions as expressions_module
+from app.services import langgraph_connectors as connectors_module
 from app.services import langgraph_templates as tpl
 from app.services import schema_utils as schema_module
 from app.services.linter import _is_irreversible
@@ -44,7 +45,20 @@ DIFFERENCES = [
     "When a decision matches no branch the generated code raises RoutingError; the simulator explores every branch.",
     "Steps with several outgoing edges run those branches in parallel. If separate parallel branches rejoin, "
     "the joining step runs once per arriving branch.",
-    "TOOL, API, DATABASE, RAG and TRANSFORM steps are stubs that return fixtures until you implement them in integrations.py.",
+    "API, DATABASE and RAG steps make real requests, queries and searches (connectors.py); TOOL and TRANSFORM steps raise "
+    "NotImplementedError until you implement them in integrations.py. AIFLOW_MOCK=1 returns fixtures for all of them.",
+]
+
+TARGET_SUFFIX = {"langgraph": "langgraph", "python": "python"}
+PLAIN_DIFFERENCES = [
+    "State accumulates: each step's output is merged into the running data, so later steps can use earlier results. "
+    "The simulator passes only the previous step's output.",
+    "Each step runs at most once per run (like the simulator): a step several branches lead into runs once, and loops are not repeated.",
+    "When a decision matches no branch the generated code raises RoutingError; the simulator explores every branch.",
+    "A human review asks synchronously (in the terminal, or through the on_review callback you pass to engine.run); "
+    "a run cannot be paused in one process and resumed in another.",
+    "API, DATABASE and RAG steps make real requests, queries and searches (connectors.py); TOOL and TRANSFORM steps raise "
+    "NotImplementedError until you implement them in integrations.py. AIFLOW_MOCK=1 returns fixtures for all of them.",
 ]
 
 _RESERVED_GRAPH_NAMES = {"data", "visited", "result"}   # LangGraph rejects a step named like a state key
@@ -96,17 +110,23 @@ def _project_slug(name: str) -> str:
 # ── The exporter ─────────────────────────────────────────────────────────────
 
 class LangGraphExporter:
+    """Exports a workflow as a runnable Python project: ``target="langgraph"`` (default) or ``"python"`` (no framework)."""
+
     def export(
         self,
         workflow: Workflow,
         cases: Optional[list[dict[str, Any]]] = None,
         run_seed: int = 0,
+        target: str = "langgraph",
     ) -> dict[str, str]:
         """Return the project as ``{relative path: file text}``."""
-        plan = _Plan(workflow)
+        if target not in TARGET_SUFFIX:
+            raise ExportError(f"Unknown export target {target!r}.")
+        plain = target == "python"
+        plan = _Plan(workflow, target)
         files: dict[str, str] = {
             "workflow.json": json.dumps(workflow.model_dump(mode="json"), indent=2, ensure_ascii=False) + "\n",
-            "state.py": tpl.STATE_PY,
+            "state.py": tpl.STATE_PLAIN_PY if plain else tpl.STATE_PY,
             "runtime.py": tpl.RUNTIME_PY,
             "aiflow_expressions.py": inspect.getsource(expressions_module),
             "aiflow_schema.py": inspect.getsource(schema_module),
@@ -114,29 +134,44 @@ class LangGraphExporter:
             "integrations.py": plan.integrations_py(),
             "routing.py": plan.routing_py(),
             "graph.py": plan.graph_py(),
-            "main.py": tpl.MAIN_PY,
-            "requirements.txt": tpl.REQUIREMENTS,
-            ".env.example": tpl.ENV_EXAMPLE,
+            "main.py": tpl.MAIN_PLAIN_PY if plain else tpl.MAIN_PY,
+            "requirements.txt": plan.requirements(),
+            ".env.example": plan.env_example(),
             "pytest.ini": tpl.PYTEST_INI,
             "README.md": plan.readme(has_cases=bool(cases)),
             "tests/aiflow_assertions.py": _assertions_source(),
             "tests/cases.json": json.dumps(_cases_json(cases or []), indent=2, ensure_ascii=False) + "\n",
-            "tests/test_workflow.py": tpl.TEST_PY.replace("__RUN_SEED__", str(int(run_seed))),
+            "tests/test_workflow.py": (tpl.TEST_PLAIN_PY if plain else tpl.TEST_PY).replace("__RUN_SEED__", str(int(run_seed))),
         }
+        if plain:
+            files["review.py"] = tpl.REVIEW_PY
+            files["engine.py"] = tpl.ENGINE_PY
+        if plan.uses_connectors:
+            files["connectors.py"] = connectors_module.CONNECTORS_PY
         return files
 
-    def export_zip(self, workflow: Workflow, cases: Optional[list[dict[str, Any]]] = None, run_seed: int = 0) -> tuple[str, bytes]:
+    def export_zip(
+        self,
+        workflow: Workflow,
+        cases: Optional[list[dict[str, Any]]] = None,
+        run_seed: int = 0,
+        target: str = "langgraph",
+    ) -> tuple[str, bytes]:
         """Return ``(project folder name, zip bytes)``. Deterministic: the same input gives identical bytes."""
-        files = self.export(workflow, cases, run_seed)
-        folder = f"{_project_slug(workflow.name)}-langgraph"
-        buffer = io.BytesIO()
-        with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
-            for path in sorted(files):
-                info = zipfile.ZipInfo(f"{folder}/{path}", date_time=_ZIP_TIME)
-                info.compress_type = zipfile.ZIP_DEFLATED
-                info.external_attr = 0o644 << 16
-                archive.writestr(info, files[path])
-        return folder, buffer.getvalue()
+        files = self.export(workflow, cases, run_seed, target)
+        return zip_project(f"{_project_slug(workflow.name)}-{TARGET_SUFFIX[target]}", files)
+
+
+def zip_project(folder: str, files: dict[str, str]) -> tuple[str, bytes]:
+    """Zip ``files`` under ``folder/`` with fixed timestamps so identical input gives identical bytes."""
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
+        for path in sorted(files):
+            info = zipfile.ZipInfo(f"{folder}/{path}", date_time=_ZIP_TIME)
+            info.compress_type = zipfile.ZIP_DEFLATED
+            info.external_attr = 0o644 << 16
+            archive.writestr(info, files[path])
+    return folder, buffer.getvalue()
 
 
 def _cases_json(cases: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -165,31 +200,38 @@ def _assertions_source() -> str:
 class _Plan:
     """Everything derived from the workflow that the file builders share."""
 
-    def __init__(self, workflow: Workflow):
+    def __init__(self, workflow: Workflow, target: str = "langgraph"):
         self.workflow = workflow
-        starts = [n for n in workflow.nodes if n.type == NodeType.START]
-        if len(starts) != 1:
-            raise ExportError(f"The workflow needs exactly one START node to be exported (it has {len(starts)}).")
-        if not any(n.type == NodeType.END for n in workflow.nodes):
-            raise ExportError("The workflow needs at least one END node to be exported.")
-        self.start = starts[0]
-
+        self.target = target
         by_id = {n.id: n for n in workflow.nodes}
         self.edges = [e for e in workflow.edges if e.source in by_id and e.target in by_id]
 
-        # Only steps reachable from START are part of the graph.
-        out: dict[str, list[str]] = {}
-        for e in self.edges:
-            out.setdefault(e.source, []).append(e.target)
-        seen = {self.start.id}
-        queue = deque([self.start.id])
-        while queue:
-            for nxt in out.get(queue.popleft(), []):
-                if nxt not in seen:
-                    seen.add(nxt)
-                    queue.append(nxt)
-        self.nodes = [n for n in workflow.nodes if n.id in seen]
-        self.skipped = [n for n in workflow.nodes if n.id not in seen]
+        if target == "mcp":
+            # A tool server needs no START/END: every step is available, none is "reachable".
+            self.start = None
+            self.nodes = list(workflow.nodes)
+            self.skipped = []
+        else:
+            starts = [n for n in workflow.nodes if n.type == NodeType.START]
+            if len(starts) != 1:
+                raise ExportError(f"The workflow needs exactly one START node to be exported (it has {len(starts)}).")
+            if not any(n.type == NodeType.END for n in workflow.nodes):
+                raise ExportError("The workflow needs at least one END node to be exported.")
+            self.start = starts[0]
+
+            # Only steps reachable from START are part of the graph.
+            out: dict[str, list[str]] = {}
+            for e in self.edges:
+                out.setdefault(e.source, []).append(e.target)
+            seen = {self.start.id}
+            queue = deque([self.start.id])
+            while queue:
+                for nxt in out.get(queue.popleft(), []):
+                    if nxt not in seen:
+                        seen.add(nxt)
+                        queue.append(nxt)
+            self.nodes = [n for n in workflow.nodes if n.id in seen]
+            self.skipped = [n for n in workflow.nodes if n.id not in seen]
 
         used: set[str] = set()
         self.names = {n.id: _unique(_slug(n.id), used) for n in self.nodes}
@@ -202,7 +244,7 @@ class _Plan:
             "",
             "Each function receives the graph state and returns the part of it that changes. Step settings come",
             'from workflow.json through runtime.NODES, so edit the workflow there or in AiFlow."""',
-            "from langgraph.types import interrupt",
+            "from review import interrupt" if self.target == "python" else "from langgraph.types import interrupt",
             "",
             "import integrations",
             "from runtime import NODES, call_llm",
@@ -251,21 +293,32 @@ class _Plan:
         return f"{n.type.value.lower()}_{self.names[n.id]}"
 
     # ── integrations.py ─────────────────────────────────────────────────────
+    @property
+    def stubs(self) -> list[WorkflowNode]:
+        return [n for n in self.nodes if n.type in (NodeType.TOOL, NodeType.API, NodeType.DATABASE, NodeType.RAG, NodeType.TRANSFORM)]
+
+    @property
+    def uses_connectors(self) -> bool:
+        return any(n.type in (NodeType.API, NodeType.DATABASE, NodeType.RAG) for n in self.nodes)
+
     def integrations_py(self) -> str:
         lines = [
-            '"""Stubs for the steps that talk to the outside world (generated by AiFlow).',
+            '"""Steps that talk to the outside world (generated by AiFlow).',
             "",
-            "Every function below returns a fixture so the graph runs end to end today. Replace the body with a",
-            "real implementation; the step's settings from the designer are in NODES[<id>]['config']. Return a dict:",
-            'it is merged into the workflow data."""',
+            "With AIFLOW_MOCK=1 every function returns a fixture, so the graph runs offline. Without it:",
+            "  * API, DATABASE and RAG steps do the real work through connectors.py, using the step's settings;",
+            "  * TOOL and TRANSFORM steps have no settings that say how to run them, so they raise",
+            "    NotImplementedError until you write them here.",
+            'Return a dict: it is merged into the workflow data."""',
             "from typing import Any",
             "",
-            "from runtime import NODES, fixture",
+            "from runtime import NODES, fixture, mock_mode",
         ]
-        stubs = [n for n in self.nodes if n.type in (NodeType.TOOL, NodeType.API, NodeType.DATABASE, NodeType.RAG, NodeType.TRANSFORM)]
-        if not stubs:
+        if self.uses_connectors:
+            lines.append("import connectors")
+        if not self.stubs:
             lines += ["", "", "# This workflow has no TOOL, API, DATABASE, RAG or TRANSFORM steps, so there is nothing to implement."]
-        for n in stubs:
+        for n in self.stubs:
             lines += ["", ""] + self._stub_function(n)
         return "\n".join(lines) + "\n"
 
@@ -273,43 +326,88 @@ class _Plan:
         cfg = n.config
         nid = repr(n.id)
         t = n.type
+        real: Optional[str] = None            # the call that does the work when mock mode is off
         if t == NodeType.TOOL:
             summary = f"runs the tool '{_safe_text(cfg.get('name') or n.name, 50)}'"
-            hint = ["    # TODO: call the tool and return its result as a dict."]
-            default = None   # built from the step's name at run time, see below
+            default = self._tool_default(nid)
         elif t == NodeType.API:
             method = _safe_text(str(cfg.get("method") or "GET").upper(), 10)
-            summary = f"{method} {_safe_text(cfg.get('url') or '(no url set)', 80)}"
             effect = "changes data in another system" if _is_irreversible(n) else "reads from another system"
-            hint = [
-                f"    # TODO: this step {effect}. Send the request described in NODES[{nid}]['config'] (method, url, headers),",
-                "    # for example with httpx, filling {{placeholders}} in the url with runtime.render(...).",
-            ]
-            default = {"status": 200, "body": {"mock": True}, "_mock": True}
+            summary = f"{method} {_safe_text(cfg.get('url') or '(no url set)', 80)} ({effect})"
+            default = _literal({"status": 200, "body": {"mock": True}, "_mock": True})
+            real = "connectors.http_request(config, data)"
         elif t == NodeType.DATABASE:
             effect = "writes" if _is_irreversible(n) else "reads"
             summary = f"{effect} data with the query in the step's settings"
-            hint = [f"    # TODO: run the query in NODES[{nid}]['config']['query'] against your database (connection: config['connection'])."]
-            default = {"rows": [], "_mock": True}
+            default = _literal({"rows": [], "row_count": 0, "_mock": True})
+            real = "connectors.run_query(config, data)"
         elif t == NodeType.RAG:
             summary = f"searches the knowledge base '{_safe_text(cfg.get('knowledgeBase') or '(none set)', 50)}'"
-            hint = [f"    # TODO: query your vector store for NODES[{nid}]['config']['knowledgeBase'] and return {{'documents': [...], 'answer': ...}}."]
-            default = {"documents": [], "answer": "Mock RAG answer", "_mock": True}
+            default = _literal({"documents": [], "context": "", "_mock": True})
+            real = "connectors.search_knowledge(config, data)"
         else:
             summary = f"reshapes the data ({_safe_text(cfg.get('description') or 'no description', 60)})"
-            hint = ["    # TODO: transform `data` and return the fields that change."]
-            default = {"_transformed": True}
-        return [
+            default = _literal({"_transformed": True})
+        body = [
             f"def {self._stub_name(n)}(data: dict[str, Any]) -> dict[str, Any]:",
             f'    """{n.type.value} step \'{_safe_text(n.name, 50)}\': {summary}."""',
             f"    config = NODES[{nid}].get(\"config\") or {{}}   # the settings from the designer",
-            *hint,
-            f"    return fixture({nid}, {_literal(default) if default is not None else self._tool_default(nid)})",
+            "    if mock_mode():",
+            f"        return fixture({nid}, {default})",
         ]
+        if real:
+            body.append(f"    return {real}")
+        else:
+            body += [
+                "    # TODO: implement this step. `data` holds everything the workflow has produced so far;",
+                "    # return a dict with the fields it adds.",
+                f"    raise NotImplementedError(f\"Implement step {{NODES[{nid}].get('name')!r}} in integrations.py, or run with AIFLOW_MOCK=1.\")",
+            ]
+        return body
 
     @staticmethod
     def _tool_default(nid: str) -> str:
         return f"{{\"tool\": NODES[{nid}].get(\"name\"), \"result\": \"mock tool output\", \"_mock\": True}}"
+
+    # ── requirements / environment ──────────────────────────────────────────
+    def requirements(self) -> str:
+        lines = [] if self.target == "python" else ["langgraph>=1.0,<2"]
+        lines += ["langchain-openai>=1.0,<2", "python-dotenv>=1.0", "pytest>=8"]
+        if any(n.type == NodeType.API for n in self.nodes):
+            lines.append("httpx>=0.27")
+        if any(n.type == NodeType.DATABASE for n in self.nodes):
+            lines += ["sqlalchemy>=2,<3", "# add the driver for your database, for example: psycopg2-binary (PostgreSQL), pymysql (MySQL)"]
+        return "\n".join(lines) + "\n"
+
+    def env_names(self) -> list[str]:
+        """Names of the environment variables the workflow refers to as ``env:NAME``."""
+        found: list[str] = []
+
+        def visit(value: Any) -> None:
+            if isinstance(value, str) and value.startswith("env:"):
+                name = re.sub(r"[^A-Za-z0-9_]", "", value[4:])
+                if name and name not in found:
+                    found.append(name)
+            elif isinstance(value, dict):
+                for v in value.values():
+                    visit(v)
+            elif isinstance(value, list):
+                for v in value:
+                    visit(v)
+
+        for n in self.nodes:
+            if n.type in (NodeType.API, NodeType.DATABASE):
+                visit(n.config)
+        return found
+
+    def env_example(self) -> str:
+        extra = self.env_names()
+        text = tpl.ENV_EXAMPLE
+        if extra:
+            text += "\n# Referenced by this workflow as env:NAME (never stored in workflow.json)\n" + "".join(f"{name}=\n" for name in extra)
+        if any(n.type == NodeType.RAG for n in self.nodes):
+            text += "\n# Knowledge search reads .md/.txt files from knowledge/<knowledge base>/. With OPENAI_API_KEY set it uses\n# embeddings; otherwise an offline keyword scorer. AIFLOW_RAG=keyword|embeddings overrides.\n# AIFLOW_KNOWLEDGE_DIR=knowledge\n"
+        return text
 
     # ── routing.py ──────────────────────────────────────────────────────────
     def routing_py(self) -> str:
@@ -336,6 +434,42 @@ class _Plan:
 
     # ── graph.py ────────────────────────────────────────────────────────────
     def graph_py(self) -> str:
+        return self._plain_graph_py() if self.target == "python" else self._langgraph_graph_py()
+
+    def _plain_graph_py(self) -> str:
+        """The graph as plain data for engine.py: the entry step, plain edges, and a router per decision."""
+        by_id = {n.id: n for n in self.nodes}
+        edges: dict[str, list[str]] = {}
+        for e in self.edges:
+            src, dst = by_id.get(e.source), by_id.get(e.target)
+            if not src or not dst or src.type in (NodeType.CONDITION, NodeType.END):
+                continue
+            targets = edges.setdefault(self.names[src.id], [])
+            if self.names[dst.id] not in targets:
+                targets.append(self.names[dst.id])
+        routers = [n for n in self.nodes if n.type == NodeType.CONDITION]
+        lines = [
+            '"""The workflow graph as data (generated by AiFlow)."""',
+            "import nodes",
+            "import routing",
+            "",
+            f"ENTRY = {self.names[self.start.id]!r}",
+            "",
+            "FUNCS = {",
+            *[f"    {self.names[n.id]!r}: nodes.{self.func[n.id]}," for n in self.nodes],
+            "}",
+            "",
+            "# next steps after each step that is not a decision",
+            f"EDGES = {_literal(edges)}",
+            "",
+            "# decisions pick their next steps with a router (see routing.py)",
+            "ROUTERS = {",
+            *[f"    {self.names[n.id]!r}: routing.route_{self.names[n.id]}," for n in routers],
+            "}",
+        ]
+        return "\n".join(lines) + "\n"
+
+    def _langgraph_graph_py(self) -> str:
         lines = [
             '"""Builds the LangGraph StateGraph for this workflow (generated by AiFlow)."""',
             "from langgraph.checkpoint.memory import InMemorySaver",
@@ -378,11 +512,24 @@ class _Plan:
         for n in self.nodes:
             fn = f"nodes.{self.func[n.id]}" + (f" → integrations.{self._stub_name(n)}" if n in stubs else "")
             rows.append(f"| {_safe_text(n.name, 50).replace('|', '/')} | {n.type.value} | `{fn}` |")
+        todo_steps = [n for n in stubs if n.type in (NodeType.TOOL, NodeType.TRANSFORM)]
         todo = (
             ["", "## What you still need to implement", "",
-             "These steps return fixtures until you replace the bodies in `integrations.py`:", ""]
-            + [f"- `{self._stub_name(n)}` — {n.type.value} step “{_safe_text(n.name, 50)}”" for n in stubs]
-            if stubs else []
+             "These steps have no settings that say how to run them. They return fixtures in mock mode and raise "
+             "`NotImplementedError` otherwise; write them in `integrations.py`:", ""]
+            + [f"- `{self._stub_name(n)}` — {n.type.value} step “{_safe_text(n.name, 50)}”" for n in todo_steps]
+            if todo_steps else []
+        )
+        real_steps = [n for n in stubs if n.type in (NodeType.API, NodeType.DATABASE, NodeType.RAG)]
+        connect = (
+            ["", "## What runs for real", "",
+             "Outside mock mode these steps use `connectors.py` and the settings in `workflow.json`:", ""]
+            + [f"- {n.type.value} “{_safe_text(n.name, 50)}” → `{self._stub_name(n)}`" for n in real_steps]
+            + ["",
+               "- **API**: sends the request (method, url, headers, body). `{{field}}` values in the url are percent-encoded; a header value `env:NAME` is read from that environment variable. A non-2xx response is returned as `{status, body}` so a decision can branch on it.",
+               "- **DATABASE**: runs the query with SQLAlchemy; `{{field}}` values become bound parameters (never pasted into the SQL). Set the step's connection to `env:NAME`, with the database URL in that variable, and install your database driver.",
+               "- **RAG**: searches `knowledge/<knowledge base>/*.md|*.txt` (embeddings if `OPENAI_API_KEY` is set, otherwise an offline keyword scorer). Swap in your vector store in `connectors.search_knowledge` when you have one."]
+            if real_steps else []
         )
         skipped = (
             ["", f"Steps not connected to START were left out: {', '.join(_safe_text(n.name, 40) for n in self.skipped)}."]
@@ -397,7 +544,9 @@ class _Plan:
         return "\n".join([
             f"# {_safe_text(wf.name, 80)}",
             "",
-            _safe_text(wf.description, 300) if wf.description.strip() else "A workflow exported from AiFlow as a LangGraph project.",
+            _safe_text(wf.description, 300) if wf.description.strip() else (
+                "A workflow exported from AiFlow as a plain Python project (no framework; `engine.py` is the whole runtime)."
+                if self.target == "python" else "A workflow exported from AiFlow as a LangGraph project."),
             "",
             "Generated by AiFlow. The workflow is kept in `workflow.json` and every step reads its settings from there.",
             "",
@@ -413,12 +562,15 @@ class _Plan:
             "pytest                                                # tests, always in mock mode",
             "```",
             "",
+            "Human-review steps ask `approve / reject` in the terminal (`--auto-approve` skips the prompt)."
+            if self.target == "python" else
             "Human-review steps pause the run and ask `approve / reject` in the terminal (`--auto-approve` skips the prompt).",
             "",
             "## Steps",
             "",
             *rows,
             *skipped,
+            *connect,
             *todo,
             "",
             "## Tests",
@@ -427,7 +579,7 @@ class _Plan:
             "",
             "## Differences from the AiFlow simulator",
             "",
-            *[f"- {d}" for d in DIFFERENCES],
+            *[f"- {d}" for d in (PLAIN_DIFFERENCES if self.target == "python" else DIFFERENCES)],
             "",
             "Decision expressions are evaluated by `aiflow_expressions.py`, the same safe evaluator the simulator uses (no `eval`).",
             "",

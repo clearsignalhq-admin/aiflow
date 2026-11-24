@@ -231,6 +231,7 @@ create table if not exists public.suite_runs (
               check (status in ('running', 'complete', 'cancelled', 'failed')),
   case_count  integer     not null,
   seed        integer     not null default 0,
+  llm_mode    text        not null default 'mock' check (llm_mode in ('mock', 'real')),
   workflow    jsonb       not null,                       -- snapshot: editing the workflow mid-run changes nothing
   cases       jsonb       not null,                       -- snapshot of the suite's cases
   note        text,                                       -- why a job was marked failed

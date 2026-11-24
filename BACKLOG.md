@@ -589,6 +589,18 @@ Future Directions D1. Real exporter generating a runnable Python project with op
 
 ---
 
+### Task 54 — Real Integrations in Exported Code `[x]`
+### Task 55 — Real-LLM Test Suites `[x]`
+### Task 56 — More Export Formats `[x]`
+
+Plain Python and MCP done. **OpenAI Agents SDK not done:** needs a design for mapping a graph onto agents and handoffs, and a way to run the SDK to verify it.
+
+### Task 57 — Import from LangGraph `[x]`
+
+**Follow-ups (not scheduled):** import from n8n / other graph formats; import `workflow` code written with the functional API or classes; real LLM-written integrations for TOOL/TRANSFORM steps; a hosted run history for exported projects (production traces back onto the canvas).
+
+---
+
 ## Future Enhancements — Polish & Operations
 
 ### Custom SMTP + Branded Email Templates + Auth Rate Limits
