@@ -125,12 +125,12 @@ Open **http://localhost:5173**.
 ## Running Tests
 
 ```bash
-# Backend (980 tests)
+# Backend (1019 tests)
 cd backend
 .venv/Scripts/pytest -v       # Windows
 pytest -v                     # macOS / Linux
 
-# Frontend unit tests (524 tests)
+# Frontend unit tests (536 tests)
 cd frontend
 npm test
 
@@ -280,7 +280,7 @@ A step-by-step guide with screenshots lives in `docs/user-guide/README.md`. The 
 
 #### Versions and the About dialog
 
-The product version lives in one file, `VERSION`. To cut a release: run `python scripts/bump_version.py patch|minor|major` (it bumps `VERSION`, adds a changelog entry to fill in, and copies the number into `backend/app/version.py` and `frontend/package.json`), write the entry, run the tests, commit, `git tag vX.Y.Z`, and deploy with `python scripts/deploy.py` (it builds, adds `GitCommit=<sha>` to the parameters already in `samconfig.toml`, deploys, and refuses to run with uncommitted changes; `--dry-run` prints the commands). `python scripts/sync_version.py` alone re-copies the number; `--check` is what the tests run. A test fails if any copy disagrees or the changelog does not lead with the current version. Numbering is `MAJOR.MINOR.PATCH`; while in private beta the major stays 0, a feature raises MINOR and a fix raises PATCH.
+The product version lives in one file, `VERSION`. To cut a release: run `python scripts/bump_version.py patch|minor|major` (it bumps `VERSION`, adds a changelog entry to fill in, and copies the number into `backend/app/version.py` and `frontend/package.json`), write the entry, run the tests, commit, and deploy with `python scripts/deploy.py` (it builds, adds `GitCommit=<sha>` to the parameters already in `samconfig.toml`, deploys, refuses to run with uncommitted changes, and then offers to create and push the annotated tag `vX.Y.Z` on the deployed commit; `--dry-run` previews, `--tag` tags without asking, `--no-tag` skips it). `python scripts/sync_version.py` alone re-copies the number; `--check` is what the tests run. A test fails if any copy disagrees or the changelog does not lead with the current version. Numbering is `MAJOR.MINOR.PATCH`; while in private beta the major stays 0, a feature raises MINOR and a fix raises PATCH.
 
 **Help → About AiFlow** shows the version, the commit and build date of the page, the version and commit of the server (from `GET /api/health`), the changelog, and a **Copy version info** button for bug reports. If the page and the server differ in MAJOR or MINOR (typically a stale cached page after a deploy), a banner offers a reload; a different PATCH is treated as compatible. The server's commit is stamped by `scripts/deploy.py`; a plain `sam deploy` leaves it as `unknown`. The full routine, with the manual fallback, is in [docs/deploy.md](docs/deploy.md). The page's commit comes from Amplify (or git, locally) at build time.
 

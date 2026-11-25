@@ -2,15 +2,20 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { APP_VERSION } from '../version';
 import { useAnalytics } from '../hooks/useAnalytics';
+import { CATALOG } from '../features/workflow/exampleCatalog';
+import editorShot from '../../../docs/user-guide/images/04-editor-example.png';
+import suggestShot from '../../../docs/user-guide/images/14-suggest.png';
+import safetyShot from '../../../docs/user-guide/images/07-safety.png';
+import compareShot from '../../../docs/user-guide/images/12-compare-runs.png';
 
-const GITHUB_URL = 'https://github.com/fuatyazar/aiflow';
+const GITHUB_URL = 'https://github.com/fuvito/aiflow';
 
 const WORKFLOW_STEPS = [
-  { icon: '💬', label: 'Describe', desc: 'Describe your workflow in plain language' },
-  { icon: '✨', label: 'Generate', desc: 'AI generates a structured workflow graph' },
-  { icon: '✏️', label: 'Design', desc: 'Edit nodes, connections, and configuration' },
-  { icon: '▶', label: 'Simulate', desc: 'Step-by-step execution with full trace' },
-  { icon: '📊', label: 'Evaluate', desc: 'AI scores the workflow and recommends improvements' },
+  { icon: '💬', label: 'Describe', desc: 'Describe a workflow in plain language and let AI draw it, or start from one of twelve examples' },
+  { icon: '✏️', label: 'Design', desc: 'Edit steps, connections, settings and data contracts on a canvas, with undo' },
+  { icon: '✅', label: 'Check & fix', desc: 'Design checks, one-click fixes, safety checks and a failure drill' },
+  { icon: '🧪', label: 'Test & compare', desc: 'Simulate with a full trace, run test suites, and see exactly what a change broke' },
+  { icon: '🔗', label: 'Share & export', desc: 'Versions, read-only share links, and runnable Python, LangGraph or MCP code' },
 ];
 
 const NODE_TYPES = [
@@ -24,25 +29,27 @@ const NODE_TYPES = [
   { type: 'TRANSFORM', color: '#4af74a', desc: 'Data transformation' },
 ];
 
-const EXAMPLE_WORKFLOWS = [
-  {
-    name: 'Customer Support Agent',
-    steps: ['User Question', 'Classify Request', 'Retrieve Knowledge', 'Generate Response', 'Human Approval'],
-  },
-  {
-    name: 'Document Analysis',
-    steps: ['Document Input', 'Extract Information', 'Analyze Content', 'Validate', 'Generate Report'],
-  },
-  {
-    name: 'Review Pipeline',
-    steps: ['Collect Reviews', 'Sentiment Analysis', 'Extract Issues', 'Summarize', 'Human Review'],
-  },
+const SHOTS = [
+  { src: editorShot, title: 'Design on a canvas', alt: 'The AiFlow editor with the Supply Chain Monitor example: steps, connections and a settings panel.',
+    text: 'A ready-made workflow loaded in the editor: every step, connection and setting in one view.' },
+  { src: suggestShot, title: 'Check, then fix', alt: 'The Suggested changes dialog listing fixes for design findings, each with an Apply button.',
+    text: 'Design findings turn into suggested fixes, applied as one undoable edit.' },
+  { src: safetyShot, title: 'Safety checks', alt: 'The Safety checks dialog showing prompt-injection exposure and the results of a failure drill.',
+    text: 'Where planted text could reach an action, and which failures nobody would notice.' },
+  { src: compareShot, title: 'Know what a change broke', alt: 'A comparison of two test runs: a regression, the case that broke, and the edit that caused it.',
+    text: 'Run a test suite again and see which cases regressed, and the edit that caused it.' },
 ];
+
+/** First sentence of a description, for a card. */
+const firstSentence = (text: string) => {
+  const end = text.indexOf('. ');
+  return end === -1 ? text : text.slice(0, end + 1);
+};
 
 const TECH_STACK = [
   { layer: 'Frontend', items: ['React 19', 'TypeScript', 'Vite', 'React Flow'] },
   { layer: 'Backend', items: ['Python', 'FastAPI', 'Pydantic', 'LangChain'] },
-  { layer: 'AI / LLM', items: ['OpenAI GPT-4o', 'Provider-agnostic interface', 'Structured output'] },
+  { layer: 'AI / LLM', items: ['OpenAI models', 'Provider-agnostic interface', 'Structured output'] },
   { layer: 'Infra', items: ['AWS Lambda', 'AWS Amplify', 'Supabase', 'PostgreSQL + RLS'] },
 ];
 
@@ -80,6 +87,7 @@ export default function LandingPage() {
           <span>AiFlow</span>
         </div>
         <div className="landing-nav-links">
+          <Link to="/guide">User guide</Link>
           <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer">GitHub</a>
           <button className="landing-nav-theme" onClick={toggleTheme} title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}>
             {isDark ? '☀' : '☾'}
@@ -98,12 +106,15 @@ export default function LandingPage() {
             <span className="landing-hero-accent">agentic AI workflows</span>
           </h1>
           <p className="landing-hero-sub">
-            AiFlow is a developer environment for designing, simulating, and evaluating
+            AiFlow is a developer environment for designing, checking, testing and sharing
             multi-step AI workflows — built as an exploration of developer tooling for agentic systems.
           </p>
           <div className="landing-hero-actions">
             <Link to="/request-access" className="landing-btn-primary">
               Request demo access
+            </Link>
+            <Link to="/guide" className="landing-btn-secondary">
+              Read the user guide
             </Link>
             <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className="landing-btn-secondary">
               View on GitHub
@@ -143,7 +154,7 @@ export default function LandingPage() {
       <section className="landing-section">
         <div className="landing-container">
           <h2>How AiFlow works</h2>
-          <p className="landing-section-sub">Five stages from idea to evaluated workflow.</p>
+          <p className="landing-section-sub">Five stages from idea to a tested, shareable workflow.</p>
           <div className="landing-pipeline">
             {WORKFLOW_STEPS.map((step, i) => (
               <div key={step.label} className="landing-pipeline-step">
@@ -157,8 +168,24 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Node types ── */}
+      {/* ── See it in action ── */}
       <section className="landing-section landing-section-alt">
+        <div className="landing-container">
+          <h2>See it in action</h2>
+          <p className="landing-section-sub">Screenshots from the real application, taken from the user guide.</p>
+          <div className="landing-shots">
+            {SHOTS.map((shot) => (
+              <figure key={shot.title} className="landing-shot">
+                <img src={shot.src} alt={shot.alt} loading="lazy" />
+                <figcaption><strong>{shot.title}.</strong> {shot.text}</figcaption>
+              </figure>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Node types ── */}
+      <section className="landing-section">
         <div className="landing-container">
           <h2>Built for real agentic patterns</h2>
           <p className="landing-section-sub">
@@ -177,29 +204,35 @@ export default function LandingPage() {
       </section>
 
       {/* ── Example workflows ── */}
-      <section className="landing-section">
+      <section className="landing-section landing-section-alt">
         <div className="landing-container">
-          <h2>Example workflows</h2>
+          <h2>{CATALOG.length} example workflows</h2>
           <p className="landing-section-sub">
-            Generate any of these with a single sentence description.
+            Ready to open, run and copy (File, then Examples). Most show good practice: outside steps are checked,
+            failures are handled, and a person reviews what a model wrote before anything changes. One is flawed on
+            purpose, so you can try the checks on it.
           </p>
           <div className="landing-examples-grid">
-            {EXAMPLE_WORKFLOWS.map(wf => (
-              <div key={wf.name} className="landing-example-card">
-                <h3>{wf.name}</h3>
-                <ol className="landing-example-steps">
-                  {wf.steps.map((step, i) => (
-                    <li key={i}>{step}</li>
-                  ))}
-                </ol>
-              </div>
-            ))}
+            {CATALOG.map((entry) => {
+              const wf = entry.json as { id: string; name: string; description: string };
+              return (
+                <div key={wf.id} className="landing-example-card" data-testid="landing-example">
+                  <div className="landing-example-meta">
+                    <span className={`landing-level landing-level--${entry.difficulty}`}>{entry.difficulty}</span>
+                    <span>{entry.nodeCount} steps</span>
+                  </div>
+                  <h3>{wf.name}</h3>
+                  <p className="landing-example-desc">{firstSentence(wf.description)}</p>
+                  <div className="landing-example-industry">{entry.industry}</div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
 
       {/* ── Tech stack ── */}
-      <section className="landing-section landing-section-alt">
+      <section className="landing-section">
         <div className="landing-container">
           <h2>Technology</h2>
           <div className="landing-tech-grid">
@@ -225,6 +258,9 @@ export default function LandingPage() {
           <div className="landing-hero-actions">
             <Link to="/request-access" className="landing-btn-primary">
               Request demo access
+            </Link>
+            <Link to="/guide" className="landing-btn-secondary">
+              Read the user guide
             </Link>
             <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className="landing-btn-secondary">
               Browse the code

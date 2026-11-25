@@ -2,6 +2,20 @@
 
 AiFlow follows `MAJOR.MINOR.PATCH`. While the product is in private beta the major number stays at 0: a new feature raises MINOR, a fix raises PATCH. The newest entry is first and must match the `VERSION` file (a test checks this).
 
+## 0.12.1 — 2026-11-24
+
+**Fixed**
+- The landing page's GitHub links (navigation, hero, call to action and footer) pointed at an address that returns 404. They now point at the real repository, and a test checks them against this repository's own remote.
+
+**Improved**
+- The landing page now describes the product as it is: designing, checking, testing and sharing workflows, in five stages (describe, design, check and fix, test and compare, share and export), instead of stopping at simulation and evaluation.
+- A "See it in action" strip with four real screenshots from the user guide.
+- The example section shows the twelve real examples (level, step count, industry and a one-line description, all read from the example files) instead of three invented ones, and says one is flawed on purpose.
+- "Read the user guide" in the navigation, the hero and the call to action; the technology list no longer claims GPT-4o (the default model is `gpt-4o-mini`).
+
+**Added**
+- `scripts/deploy.py` now offers to tag the release after a successful deploy: an annotated `v<VERSION>` tag on the deployed commit, pushed to GitHub. It never moves an existing tag, never tags a dirty tree, and only asks when run from a terminal (`--tag`, `--no-tag`, `--dry-run`). Documented in `docs/deploy.md`.
+
 ## 0.12.0 — 2026-11-24
 
 **New**

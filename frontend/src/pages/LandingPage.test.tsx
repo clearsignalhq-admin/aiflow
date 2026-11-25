@@ -29,7 +29,7 @@ describe('LandingPage', () => {
 
   it('renders all workflow step labels', () => {
     render(<MemoryRouter><LandingPage /></MemoryRouter>);
-    for (const label of ['Describe', 'Generate', 'Design', 'Simulate', 'Evaluate']) {
+    for (const label of ['Describe', 'Design', 'Check & fix', 'Test & compare', 'Share & export']) {
       expect(screen.getByText(label)).toBeInTheDocument();
     }
   });

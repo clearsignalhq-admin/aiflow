@@ -27,7 +27,7 @@ This changes `VERSION`, adds an entry for the new number at the top of `CHANGELO
 1. Replace the placeholder text in the new `CHANGELOG.md` entry with what changed (this is what people read under **Help → About**).
 2. Run the tests: `cd backend; .venv\Scripts\python.exe -m pytest -q` and `cd ..\frontend; npm test`. A test fails if the version numbers disagree or the changelog does not lead with the current version.
 3. If the release adds a database change, apply the new `supabase/update_*.sql` file in the Supabase SQL editor **before** deploying the backend.
-4. Commit. Optionally tag it: `git tag vX.Y.Z`.
+4. Commit. Do not tag yet: the deploy script offers to tag the release once it has deployed (step 5).
 
 ### 2. Deploy the backend
 
@@ -41,7 +41,10 @@ What the script does:
 - refuses to run if there are uncommitted changes, because the commit it stamps into the server would then not describe what is deployed (`--allow-dirty` overrides this);
 - reads the `parameter_overrides` already in `samconfig.toml` and adds `GitCommit=<short commit id>`, so nothing else changes. Settings the config does not mention (the secrets) keep their previous values, exactly as with a plain `sam deploy`;
 - finds `sam` on the PATH before running anything. On Windows the SAM CLI is `sam.cmd`, which the script resolves for you; if it is not installed you get a clear message instead of a crash;
-- then runs `sam build` and `sam deploy`. SAM still asks you to confirm the change set (`confirm_changeset = true` in `samconfig.toml`).
+- then runs `sam build` and `sam deploy`. SAM still asks you to confirm the change set (`confirm_changeset = true` in `samconfig.toml`);
+- after a successful deploy, offers to tag the release (step 5).
+
+Options: `--dry-run` (print the commands and what it would do about the tag, change nothing), `--tag` (tag without asking), `--no-tag` (deploy only), `--allow-dirty`.
 
 ### 3. Deploy the frontend
 
@@ -55,6 +58,19 @@ Push to `main`. Amplify builds and deploys automatically (Step 3c).
 - `GET https://<api-gateway-url>/api/health` returns the version and commit.
 - Run the post-deploy checklist (Step 4 below), at least the parts that touch what changed.
 
+### 5. Tag the release
+
+When the deploy has succeeded the script asks, for example: `Tag commit 8823648 as v0.12.0 and push the tag? [y/N]`. Answer `y` and it creates an **annotated** tag `v<VERSION>` on the deployed commit (its message is `AiFlow <version>` plus the start of that version's changelog entry) and pushes it, so the tag appears on GitHub under Releases and Tags.
+
+The script is careful about tags:
+
+- It only tags the commit that was deployed, and never after a `--allow-dirty` deploy (the working tree then was not exactly that commit).
+- If the tag already points at this commit it says so and does nothing. If the tag already exists on **another** commit it refuses to move it and tells you to start a new release with `bump_version.py`.
+- It only asks when run from a terminal. Anywhere else (a script, CI) it just prints the two commands to run.
+- If the deploy worked but tagging or pushing the tag failed, it says so and exits with an error; the deploy is not undone. Tag by hand: `git tag -a v0.12.0 <commit> -m "AiFlow 0.12.0"` then `git push origin v0.12.0`.
+
+Tagging by hand always works too, and is the right way to tag a release that was deployed without the script.
+
 ### If the script fails
 
 | Symptom | Cause and fix |
@@ -62,6 +78,7 @@ Push to `main`. Amplify builds and deploys automatically (Step 3c).
 | "There are uncommitted changes" | Commit first, or use `--allow-dirty` (the stamped commit will then be the previous one) |
 | "'sam' was not found on the PATH" | Install the AWS SAM CLI and open a new terminal |
 | A SAM or CloudFormation error | The script only wraps SAM; read the error as you would for a plain deploy |
+| "already exists on ..., not on this commit; it was not moved" | The version in `VERSION` was already released from another commit. Run `python scripts/bump_version.py patch\|minor\|major` to start a new release; never move a published tag |
 | Anything else, or you simply prefer to | Use the manual steps in **Step 2b** below. They do the same thing; the only difference is that the server's commit shows as `unknown` |
 
 The manual steps below are the explanation of what the script automates and the fallback if it ever breaks. They remain correct and are kept as they were; only their headings are relabelled, and a note on stamping the commit by hand is added to Step 2b.
