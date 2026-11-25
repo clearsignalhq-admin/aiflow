@@ -2,6 +2,19 @@
 
 AiFlow follows `MAJOR.MINOR.PATCH`. While the product is in private beta the major number stays at 0: a new feature raises MINOR, a fix raises PATCH. The newest entry is first and must match the `VERSION` file (a test checks this).
 
+## 0.13.0 — 2026-11-24
+
+**New**
+- **App introduction video** (AiFlow: Idea to Code, on YouTube). On the landing page, right after the first screen, as a click-to-play section: the page makes no request to YouTube until someone presses play, and the player then loads from the privacy-friendly address (`youtube-nocookie.com`). Also under **Help → App introduction video**, and as a link at the top of the user guide (and its PDF). The video's address lives in one place (`frontend/src/links.ts`) and a test checks the written guide agrees.
+
+## 0.12.2 — 2026-11-24
+
+**Fixed**
+- The user guide ignored the light/dark preference and always showed dark. It now follows the stored choice, shared with the editor and the landing page, and has the same toggle button.
+
+**Added**
+- A PDF of the user guide: `node make-pdf.mjs` in `docs/user-guide/capture` prints the in-app guide page to `docs/user-guide/AiFlow User Guide.pdf` (A4, light, with a header showing the version and page numbers). The guide page also has print styles, so printing it from a browser (Ctrl/Cmd+P) gives the same result.
+
 ## 0.12.1 — 2026-11-24
 
 **Fixed**

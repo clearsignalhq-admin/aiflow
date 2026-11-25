@@ -11,6 +11,14 @@ Four short videos, written as **storyboards**: for each scene there is a screens
 
 Read [the production notes](00-production-notes.md) first: they hold the wording rules and the instructions to paste into NotebookLM.
 
+## Published videos
+
+| Video | Where |
+| --- | --- |
+| **App introduction** (AiFlow: Idea to Code) | [youtu.be/aPY--8am13w](https://youtu.be/aPY--8am13w). Linked from the landing page (click-to-play), **Help → App introduction video**, and the top of the user guide. The address lives in `frontend/src/links.ts`; a test checks the written guide agrees. |
+
+The four storyboards above are for further videos.
+
 ## What a storyboard contains
 
 Each scene looks like this:

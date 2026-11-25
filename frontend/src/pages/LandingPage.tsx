@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { APP_VERSION } from '../version';
 import { useAnalytics } from '../hooks/useAnalytics';
 import { CATALOG } from '../features/workflow/exampleCatalog';
+import { INTRO_VIDEO } from '../links';
+import { VideoEmbed } from '../components/VideoEmbed';
 import editorShot from '../../../docs/user-guide/images/04-editor-example.png';
 import suggestShot from '../../../docs/user-guide/images/14-suggest.png';
 import safetyShot from '../../../docs/user-guide/images/07-safety.png';
@@ -123,6 +125,15 @@ export default function LandingPage() {
         </div>
         <div className="landing-hero-visual">
           <WorkflowVisual />
+        </div>
+      </section>
+
+      {/* ── Introduction video ── */}
+      <section className="landing-section" id="introduction">
+        <div className="landing-container landing-video-section">
+          <h2>Watch the app introduction</h2>
+          <p className="landing-section-sub">A short walkthrough of AiFlow, from idea to code (about 7 minutes).</p>
+          <VideoEmbed embedUrl={INTRO_VIDEO.embedUrl} watchUrl={INTRO_VIDEO.watchUrl} title={INTRO_VIDEO.title} />
         </div>
       </section>
 

@@ -42,6 +42,7 @@ import { SafetyModal } from './features/workflow/SafetyModal';
 import { CloudModal } from './features/workflow/CloudModal';
 import { AboutModal } from './components/AboutModal';
 import { VersionBanner } from './components/VersionBanner';
+import { INTRO_VIDEO } from './links';
 import { useBackendVersion } from './hooks/useBackendVersion';
 import { ExportCodeModal } from './features/workflow/ExportCodeModal';
 import type { RunDetail } from './models/runs';
@@ -475,6 +476,7 @@ export default function WorkflowApp() {
   const backendVersion = useBackendVersion();
   const handleOpenAbout = useCallback(() => setShowAbout(true), []);
   const handleOpenGuide = useCallback(() => { window.open('/guide', '_blank', 'noopener,noreferrer'); }, []);
+  const handleOpenVideo = useCallback(() => { window.open(INTRO_VIDEO.watchUrl, '_blank', 'noopener,noreferrer'); }, []);
   const handleOpenCloud = useCallback(() => setShowCloud(true), []);
   const handleCloudOpen = useCallback((loaded: Workflow, id: string) => {
     if (!confirmDiscard()) return;
@@ -601,6 +603,7 @@ export default function WorkflowApp() {
         onCloud={handleOpenCloud}
         onAbout={handleOpenAbout}
         onGuide={handleOpenGuide}
+        onVideo={handleOpenVideo}
         saveState={{ dirty: isDirty, cloud: cloudId !== null }}
         onExportCode={handleOpenExportCode}
         onGenerate={handleGenerate}

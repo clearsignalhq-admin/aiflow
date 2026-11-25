@@ -130,7 +130,7 @@ cd backend
 .venv/Scripts/pytest -v       # Windows
 pytest -v                     # macOS / Linux
 
-# Frontend unit tests (536 tests)
+# Frontend unit tests (550 tests)
 cd frontend
 npm test
 
@@ -274,9 +274,13 @@ Click **Tests** in the toolbar to define test cases for the current workflow and
 
 `docs/video-guide/` holds four **storyboards** (quick start; test suites and comparing runs; safety checks; saving, sharing and exporting). Each scene has a screenshot from the user guide, what to emphasise on screen, and the narration, with chapter markers for the video description. They are written to be turned into videos with a tool such as Google NotebookLM; `00-production-notes.md` has the wording rules and the instructions to paste into it. A test fails if a storyboard points at a missing screenshot or its timeline has gaps.
 
+#### The app introduction video
+
+A video introduction to AiFlow (on YouTube) is on the landing page as a click-to-play section (nothing loads from YouTube until it is played), under **Help → App introduction video**, and at the top of the user guide. Its address lives in `frontend/src/links.ts`.
+
 #### The user guide
 
-A step-by-step guide with screenshots lives in `docs/user-guide/README.md`. The app shows it at `/guide` (public, no sign-in) and from **Help → User guide**; it also reads fine on GitHub. The screenshots are taken from the real interface by a script, so they can be redone whenever the interface changes: `cd docs/user-guide/capture && node run.mjs` (see the README in that folder). It runs a local copy of the backend with a fake user and in-memory storage, never your real services.
+A step-by-step guide with screenshots lives in `docs/user-guide/README.md`. The app shows it at `/guide` (public, no sign-in) and from **Help → User guide**; it also reads fine on GitHub. A PDF version is made by `node make-pdf.mjs` (same folder). The screenshots are taken from the real interface by a script, so they can be redone whenever the interface changes: `cd docs/user-guide/capture && node run.mjs` (see the README in that folder). It runs a local copy of the backend with a fake user and in-memory storage, never your real services.
 
 #### Versions and the About dialog
 

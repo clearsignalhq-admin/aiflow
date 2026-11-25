@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import guide from '../../../docs/user-guide/README.md?raw';
 import { MarkdownView } from '../components/MarkdownView';
@@ -9,9 +9,21 @@ import { APP_VERSION } from '../version';
 const IMAGES = import.meta.glob('../../../docs/user-guide/images/*.png', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
 const resolveImage = (src: string) => IMAGES[`../../../docs/user-guide/${src}`] ?? null;
 
+function storedTheme(): boolean {
+  try { return localStorage.getItem('aiflow-theme') !== 'light'; } catch { return true; }
+}
+
 /** The public user guide: the repository's docs/user-guide/README.md, with a contents list. */
 export default function GuidePage() {
   const { hash } = useLocation();
+  // Same preference, same key as the editor and the landing page, so a light-mode reader gets a light guide.
+  const [isDark, setIsDark] = useState(storedTheme);
+  useEffect(() => { document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light'); }, [isDark]);
+  const toggleTheme = () => setIsDark((d) => {
+    const next = !d;
+    try { localStorage.setItem('aiflow-theme', next ? 'dark' : 'light'); } catch { /* the choice just will not be remembered */ }
+    return next;
+  });
   const sections = useMemo(
     () => parseMarkdown(guide).flatMap((b) => (b.type === 'heading' && b.level === 2 ? [{ id: slugify(b.text), text: b.text }] : [])),
     [],
@@ -29,6 +41,9 @@ export default function GuidePage() {
         <Link to="/" className="shared-brand">⬡ AiFlow</Link>
         <span className="suite-hint">User guide · version {APP_VERSION}</span>
         <span className="guide-header-links">
+          <button className="btn btn-theme" onClick={toggleTheme} title={isDark ? 'Switch to light mode' : 'Switch to dark mode'} aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}>
+            {isDark ? '☀' : '☾'}
+          </button>
           <Link to="/app" className="btn btn-primary">Open the app</Link>
         </span>
       </header>

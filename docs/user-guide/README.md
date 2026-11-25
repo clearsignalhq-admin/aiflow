@@ -4,6 +4,8 @@ AiFlow is a tool for **designing, checking, testing and sharing AI workflows**. 
 
 You do not need to program to use it. This guide shows every part of the screen and how to get things done, with screenshots from the real application. Short video walkthroughs are planned from the same material: see the [video guide storyboards](../video-guide/README.md).
 
+**Prefer to watch first?** [Watch the app introduction video](https://youtu.be/aPY--8am13w) (YouTube).
+
 - [Quick start](#quick-start-five-minutes)
 - [The screen](#the-screen)
 - [Starting a workflow](#starting-a-workflow)

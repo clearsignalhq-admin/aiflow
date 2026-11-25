@@ -93,3 +93,6 @@ Desktop.ini
 
 # Documentation screenshot tooling logs
 docs/user-guide/capture/*.log
+
+# Generated documents (make them with docs/user-guide/capture/make-pdf.mjs)
+docs/user-guide/*.pdf

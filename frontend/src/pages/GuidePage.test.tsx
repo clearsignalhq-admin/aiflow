@@ -112,7 +112,7 @@ describe('Help menu and About link to the guide', () => {
     const onGuide = vi.fn();
     render(<MemoryRouter><Toolbar {...base} onGuide={onGuide} onAbout={vi.fn()} /></MemoryRouter>);
     fireEvent.click(screen.getByRole('button', { name: 'Help' }));
-    expect(screen.getAllByRole('menuitem').map((i) => i.querySelector('.tb-menu-item-label')?.textContent)).toEqual(['User guide', 'Search actions', 'About AiFlow']);
+    expect(screen.getAllByRole('menuitem').map((i) => i.querySelector('.tb-menu-item-label')?.textContent)).toEqual(['User guide', 'App introduction video', 'Search actions', 'About AiFlow']);
     fireEvent.click(screen.getByRole('menuitem', { name: 'User guide' }));
     expect(onGuide).toHaveBeenCalledOnce();
   });
@@ -129,5 +129,44 @@ describe('Help menu and About link to the guide', () => {
     const link = screen.getByRole('link', { name: 'Read the user guide' });
     expect(link).toHaveAttribute('href', '/guide');
     expect(link).toHaveAttribute('target', '_blank');
+  });
+});
+
+describe('GuidePage theme', () => {
+  const theme = () => document.documentElement.getAttribute('data-theme');
+  const rendered = () => render(<MemoryRouter initialEntries={['/guide']}><GuidePage /></MemoryRouter>);
+
+  it('follows the stored preference: dark by default, light when the reader chose light', () => {
+    localStorage.removeItem('aiflow-theme');
+    const first = rendered();
+    expect(theme()).toBe('dark');
+    first.unmount();
+    localStorage.setItem('aiflow-theme', 'light');
+    rendered();
+    expect(theme()).toBe('light');
+    localStorage.removeItem('aiflow-theme');
+  });
+
+  it('has a toggle that switches the theme and remembers the choice for the rest of the app', () => {
+    localStorage.removeItem('aiflow-theme');
+    rendered();
+    fireEvent.click(screen.getByRole('button', { name: 'Switch to light mode' }));
+    expect(theme()).toBe('light');
+    expect(localStorage.getItem('aiflow-theme')).toBe('light');
+    fireEvent.click(screen.getByRole('button', { name: 'Switch to dark mode' }));
+    expect(theme()).toBe('dark');
+    expect(localStorage.getItem('aiflow-theme')).toBe('dark');
+    localStorage.removeItem('aiflow-theme');
+  });
+
+  it('still works when the browser blocks storage', () => {
+    const get = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('blocked'); });
+    const set = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('blocked'); });
+    rendered();
+    expect(theme()).toBe('dark');
+    fireEvent.click(screen.getByRole('button', { name: 'Switch to light mode' }));
+    expect(theme()).toBe('light');                                                      // the page changes even if it cannot remember
+    get.mockRestore();
+    set.mockRestore();
   });
 });

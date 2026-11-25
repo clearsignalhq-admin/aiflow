@@ -15,6 +15,14 @@ node run.mjs 14         # only those whose name starts with 14 (the other steps 
 
 Neither server uses the ports of a normal development setup (8000 and 5173), so a running dev environment is left alone.
 
+## The PDF
+
+```
+node make-pdf.mjs      # writes docs/user-guide/AiFlow User Guide.pdf
+```
+
+It prints the in-app guide page (`/guide`) with a browser, in light mode on A4, so the PDF always matches what the app shows. No backend is needed. Regenerate it after changing the guide or the screenshots. The file is not committed (it goes stale with every guide change); attach a fresh one to a release if you want to hand it out.
+
 ## Needs
 
 - `backend/.venv` with the backend requirements installed (`pip install -r backend/requirements.txt`)
