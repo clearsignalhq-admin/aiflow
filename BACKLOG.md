@@ -647,11 +647,9 @@ Done as described above. **Follow-ups (not scheduled):** link the matching guide
 
 ---
 
-### Task 65 — Video User Guide `[ ]`
+### Task 65 — Video Guide `[x]`
 
-- [ ] Short screen-recorded walkthroughs: a 3-minute quick start (describe, generate, edit, simulate), then one video each for test suites, safety checks, and export
-- [ ] Script and shot list kept in the repository so videos can be re-recorded after interface changes; captions included
-- [ ] Linked from the landing page, the Help menu, and the user guide
+Delivered as storyboards (text and screenshots) that the owner turns into videos with Google NotebookLM; no video files are produced in the repository. **Follow-ups (not scheduled):** videos for refining with AI, the Generate flow and real-model test runs (they need the live model, so they cannot be captured from the offline setup); publishing the finished videos and linking them from the landing page, the user guide and the Help menu; captions and translations; a screen-recorded variant driven by the capture script.
 
 ---
 

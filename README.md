@@ -130,7 +130,7 @@ cd backend
 .venv/Scripts/pytest -v       # Windows
 pytest -v                     # macOS / Linux
 
-# Frontend unit tests (465 tests)
+# Frontend unit tests (488 tests)
 cd frontend
 npm test
 
@@ -267,6 +267,10 @@ Click **Tests** in the toolbar to define test cases for the current workflow and
 - **Real-model runs:** choose *Real model* to run the cases against the actual AI model instead of simulated answers. Before you run, the dialog shows the most model calls and rough cost the run could use, and how many AI requests you have left today; it asks you to confirm. Each model call a case makes counts against your daily AI request allowance (a timed-out case is charged the most it could have used), at most 20 cases per real run, and answers can differ between runs, so checks on model output are less exact than with the simulator. A pinned *Mock output* on an AI step is ignored in real mode A run is tied to the workflow it was created for (matched by workflow id) and uses a snapshot of both the workflow and the cases, so editing them mid-run changes nothing
 - **Compare runs:** open any previous run, pick another run of the same suite under *Compare with* (the run just before it is preselected) and press **Compare**. You get a verdict (regression, improvement or no change) with the pass-rate movement, then each test case classified as **regressed**, **fixed**, **still failing**, **unchanged**, new, removed or not run in both. For cases that ran in both: which checks flipped (with the reason), which steps now run or no longer run, and whether the output, cost or model calls changed. A **workflow diff** shows what was added, removed or edited between the two runs (including changed settings such as a prompt or an expression), so a regression can be traced to an edit, plus coverage movement. Warnings flag runs that are not directly comparable: one real and one simulated, different seeds, edited test cases, unfinished runs, or ordinary variation between two real-model runs. Comparing in the other direction turns a regression into an improvement
 - Requires the suite tables: apply `supabase/update_202611241600.sql`, then `update_202611241700.sql` for real-model runs (both already in `supabase/schema.sql` for new projects)
+
+#### The video guide
+
+`docs/video-guide/` holds four **storyboards** (quick start; test suites and comparing runs; safety checks; saving, sharing and exporting). Each scene has a screenshot from the user guide, what to emphasise on screen, and the narration, with chapter markers for the video description. They are written to be turned into videos with a tool such as Google NotebookLM; `00-production-notes.md` has the wording rules and the instructions to paste into it. A test fails if a storyboard points at a missing screenshot or its timeline has gaps.
 
 #### The user guide
 

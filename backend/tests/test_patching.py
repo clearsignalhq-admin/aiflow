@@ -217,6 +217,10 @@ async def test_failure_branch_fix_resolves_the_finding_and_still_simulates():
     trace = await simulate(fixed, {}, SimulationSettings())
     assert trace.status == "complete"                                                  # the new condition reads a field the API now declares
     assert "api" in [x.node_id for x in trace.steps]
+    assert next(n for n in fixed.nodes if n.id == "api").output_schema["properties"]["ok"] == {"type": "boolean", "enum": [True]}
+    check = next(s for s in trace.steps if s.node_type == "CONDITION")
+    assert check.warnings == [] and len(check.next_ids) == 1                           # it decides: success path only, not "follow every branch"
+    assert not any(n.type.value == "HITL" and n.id in [s.node_id for s in trace.steps] for n in fixed.nodes)   # the failure review is not visited
 
 
 def test_fixes_are_deterministic_and_each_one_applies_on_its_own():

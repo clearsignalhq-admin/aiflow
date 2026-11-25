@@ -2,7 +2,7 @@
 
 AiFlow is a tool for **designing, checking, testing and sharing AI workflows**. A workflow is a map of steps: a model writes a reply, a person approves it, a system is updated. You draw the map, AiFlow tells you what is wrong with it, runs it with test data, and lets you export it as working code.
 
-You do not need to program to use it. This guide shows every part of the screen and how to get things done, with screenshots from the real application.
+You do not need to program to use it. This guide shows every part of the screen and how to get things done, with screenshots from the real application. Short video walkthroughs are planned from the same material: see the [video guide storyboards](../video-guide/README.md).
 
 - [Quick start](#quick-start-five-minutes)
 - [The screen](#the-screen)
@@ -276,7 +276,7 @@ You get a verdict (regression, improvement or no change), and every case is sort
 - **Stops**: the run failed.
 - **Not noticed**: the run finished exactly as if nothing was wrong. This is the dangerous result, because bad data flows on silently.
 
-The drill uses your sample input and counts as one simulation. Steps that did not run with that input are listed, so you can try another input to test the other branch.
+In the Supply Chain Monitor example, applying the suggested fixes (see [Suggested changes](#suggested-changes)) and running the drill again turns nine "not noticed" results into none: server errors are handled by the new human reviews, and the other failures stop the run visibly. The drill uses your sample input and counts as one simulation. Steps that did not run with that input are listed, so you can try another input to test the other branch.
 
 These are design checks. They show where a workflow is exposed; they do not prove it is safe, and they do not test how a real model behaves.
 

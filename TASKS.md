@@ -1,5 +1,15 @@
 # AiFlow — Current Iteration
 
+## Iteration 18 — Video Guide
+
+#### Task 65 — Video Guide Storyboards `[x]`
+
+- [x] `docs/video-guide/`: four storyboards (about 3, 4, 3 and 3½ minutes) with scene timeline, screenshots, on-screen notes, narration, chapter markers and a one-line summary; production notes with wording rules, pronunciation, a NotebookLM instruction block and a pre-publish checklist
+- [x] Found while checking the narration against the real product, and fixed: the suggested failure-branch fix left its success flag untyped, so simulated fixes followed both branches (version 0.10.1)
+- [x] Tests: 23 (screenshots exist and are all used, contents links resolve, scene timelines contiguous, chapter markers match, narration pace); backend assertion added for the fix
+
+---
+
 ## Iteration 17 — User Guide
 
 #### Task 64 — User Guide `[x]`

@@ -39,12 +39,18 @@ def _node(workflow: Workflow, node_id: str) -> Optional[WorkflowNode]:
     return next((n for n in workflow.nodes if n.id == node_id), None)
 
 
+# The success flag a failure branch reads. Typed as a boolean that is always true in simulation, so the new check takes
+# the success path unless a failure is injected (an untyped field would be filled with a made-up string that matches
+# neither branch, and the simulator would follow both).
+_OK_FLAG = {"type": "boolean", "enum": [True]}
+
+
 def _schema_with(schema: Optional[dict], fields: list[str]) -> dict:
     """An output schema that also declares ``fields`` (existing properties are kept)."""
     base = dict(schema) if isinstance(schema, dict) else {"type": "object"}
     props = dict(base.get("properties") or {})
     for f in fields:
-        props.setdefault(f, {})
+        props.setdefault(f, dict(_OK_FLAG) if f == "ok" else {})
     base["properties"] = props
     return base
 

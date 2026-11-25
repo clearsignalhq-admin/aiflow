@@ -2,6 +2,14 @@
 
 AiFlow follows `MAJOR.MINOR.PATCH`. While the product is in private beta the major number stays at 0: a new feature raises MINOR, a fix raises PATCH. The newest entry is first and must match the `VERSION` file (a test checks this).
 
+## 0.10.1 — 2026-11-24
+
+**Fixed**
+- The suggested "failure branch" fix declared its success flag without a type, so simulations filled it with made-up text that matched neither branch and followed both. It is now a true/false value that is true unless a failure is injected. A workflow fixed this way now simulates down its success path, and the failure drill reports the result correctly (in the Supply Chain Monitor example: nothing left unnoticed, server errors handled by the human reviews, other failures stopping the run visibly).
+
+**Added**
+- Video guide storyboards (`docs/video-guide`): four scripts with narration, on-screen notes and screenshots, ready to be turned into videos. Checked by tests so they cannot point at missing screenshots.
+
 ## 0.10.0 — 2026-11-24
 
 **New**
