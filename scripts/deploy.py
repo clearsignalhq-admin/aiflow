@@ -10,6 +10,7 @@ override).
 """
 import argparse
 import re
+import shutil
 import subprocess
 import sys
 import tomllib
@@ -39,6 +40,19 @@ def commands(samconfig_text: str, commit: str) -> list[list[str]]:
     ]
 
 
+def resolve(cmd: list[str], which=shutil.which) -> list[str]:
+    """Replace the program name with its full path. On Windows the SAM CLI is `sam.cmd`, which a bare `sam` does not find
+    when started from Python (a terminal does, because it searches the PATHEXT list)."""
+    found = which(cmd[0])
+    if not found:
+        raise FileNotFoundError(
+            f"'{cmd[0]}' was not found on the PATH. Install it (for the AWS SAM CLI: "
+            "https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html) "
+            "and open a new terminal, or run the commands above by hand."
+        )
+    return [found, *cmd[1:]]
+
+
 def git(*args: str) -> str:
     return subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True, check=True).stdout.strip()
 
@@ -56,8 +70,15 @@ def main(argv: list[str]) -> int:
     plan = commands((ROOT / "samconfig.toml").read_text(encoding="utf-8"), git("rev-parse", "--short", "HEAD"))
     for cmd in plan:
         print("$", " ".join(f'"{c}"' if " " in c else c for c in cmd))
-        if not args.dry_run:
-            subprocess.run(cmd, cwd=ROOT, check=True)
+    if args.dry_run:
+        return 0
+    try:
+        resolved = [resolve(cmd) for cmd in plan]            # check everything is installed before running anything
+    except FileNotFoundError as exc:
+        print(f"\n{exc}", file=sys.stderr)
+        return 1
+    for cmd in resolved:
+        subprocess.run(cmd, cwd=ROOT, check=True)
     return 0
 
 

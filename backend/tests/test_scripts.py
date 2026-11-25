@@ -105,3 +105,13 @@ def test_the_plan_is_build_then_deploy():
     assert plan[0] == ["sam", "build"]
     assert plan[1][:3] == ["sam", "deploy", "--parameter-overrides"]
     assert plan[1][3].endswith(" GitCommit=abc1234") and "SupabaseUrl" in plan[1][3]
+
+
+def test_resolves_the_program_to_its_full_path():
+    which = {"sam": r"C:\Program Files\Amazon\AWSSAMCLIin\sam.cmd"}.get
+    assert deploy.resolve(["sam", "deploy", "--x"], which=which) == [r"C:\Program Files\Amazon\AWSSAMCLIin\sam.cmd", "deploy", "--x"]
+
+
+def test_a_missing_program_gives_a_helpful_message():
+    with pytest.raises(FileNotFoundError, match="'sam' was not found on the PATH"):
+        deploy.resolve(["sam", "build"], which=lambda name: None)
