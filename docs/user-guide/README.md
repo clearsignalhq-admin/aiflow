@@ -41,7 +41,7 @@ You will load a ready-made workflow, look at it, check it, and run it.
 
 **Top bar.** Everything you can do is reachable from here.
 
-- **Workflow name**: click to rename.
+- **Workflow name**: click to rename. Beside it, a small note says **Unsaved changes** while you have edits that are not saved, or **Saved to cloud** when the cloud copy matches what is on screen.
 - **↶ ↷**: undo and redo.
 - **File**: new, open, save to a file, cloud workflows, examples.
 - **Export**: edit the raw JSON, export code, Mermaid diagram, report.
@@ -54,7 +54,7 @@ You will load a ready-made workflow, look at it, check it, and run it.
 
 ![The File menu](images/02-file-menu.png)
 
-**Left: the step palette.** The ten kinds of step. Drag one onto the canvas to add it. The ⓘ next to each explains what it is for.
+**Left: the step palette.** The ten kinds of step. Drag one onto the canvas to add it. The ⓘ next to each explains what it is for. Throughout the app, ⓘ dialogs that have a matching section here end with **Read more in the user guide**.
 
 **Middle: the canvas.** Your workflow. Drag steps to move them, drag from the dot at the bottom of a step to the dot at the top of another to connect them. The small buttons at the bottom left zoom, fit the view, and tidy the layout automatically. The map in the bottom right shows where you are in a large workflow.
 
@@ -248,6 +248,8 @@ Press **Tests** to open the suites for the workflow on screen. A suite is a list
 
 Press **▶ Run … cases**. You get the overall pass rate, each case with the reason any check failed, the path it took, and a **coverage** summary: which steps never ran in any case, and which branches were never taken. Gaps in coverage are where bugs hide.
 
+Once a suite has at least two finished runs, **Pass rate over time** draws your last twelve as a small chart, with how the latest compares to the one before, so a slow decline is visible even when each run looks fine.
+
 ![A test report](images/11-tests-report.png)
 
 **Simulated** runs are free and give the same result every time. **Real model** runs call the AI for the steps that use one (answers can vary, and it uses your AI allowance). Before a real run starts you are shown what it will use.
@@ -308,7 +310,7 @@ Press **Share** on a cloud workflow to get a link.
 
 ![The share link](images/18-cloud-share.png)
 
-Anyone with the link can open it **without signing in** and see the workflow on a canvas, with a button to download it. They cannot change anything, and they cannot see who owns it. The link always shows the current version.
+Anyone with the link can open it **without signing in** and see the workflow on a canvas, with a button to download it. They cannot change anything, and they cannot see who owns it. The link always shows the current version. A visitor who is signed in to AiFlow also gets **Save a copy to my cloud workflows**, which adds a copy named "… (copy)" to their own account (they open it from File, then Cloud workflows).
 
 ![What a visitor sees](images/19-shared-page.png)
 
@@ -368,7 +370,7 @@ Other limits:
 
 ## Keyboard shortcuts and search
 
-Press **Ctrl+K** (**⌘K** on a Mac) anywhere to open the action search, type a few letters of what you want ("share", "export", "safety"), and press **Enter**. It finds actions by name and by what they do.
+Press **Ctrl+K** (**⌘K** on a Mac) anywhere to open the action search, type a few letters of what you want ("share", "export", "safety"), and press **Enter**. It finds actions by name and by what they do, and it remembers your last few: until you type, those come first, marked *Recent*.
 
 ![The action search](images/23-command-palette.png)
 

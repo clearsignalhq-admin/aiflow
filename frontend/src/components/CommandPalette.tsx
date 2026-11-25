@@ -4,21 +4,34 @@ import { filterActions, isEnabled } from './actions';
 
 interface Props {
   actions: ActionItem[];
+  /** Ids of recently used actions, newest first; shown first (labelled Recent) until something is typed. */
+  recentIds?: string[];
+  onPick?: (action: ActionItem) => void;
   onClose: () => void;
 }
 
 /** Search every action by name; ↑/↓ to move, Enter to run, Esc to close. */
-export function CommandPalette({ actions, onClose }: Props) {
+export function CommandPalette({ actions, recentIds = [], onPick, onClose }: Props) {
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
-  const results = useMemo(() => filterActions(actions, query), [actions, query]);
+  const recent = useMemo(
+    () => recentIds.map((id) => actions.find((a) => a.id === id)).filter((a): a is ActionItem => !!a && isEnabled(a)),
+    [actions, recentIds],
+  );
+  const recentSet = useMemo(() => new Set(recent.map((a) => a.id)), [recent]);
+  const typing = query.trim().length > 0;
+  const results = useMemo(
+    () => (typing ? filterActions(actions, query) : [...recent, ...actions.filter((a) => !recentSet.has(a.id))]),
+    [actions, query, typing, recent, recentSet],
+  );
 
   useEffect(() => { inputRef.current?.focus(); }, []);
 
   const run = (a: ActionItem | undefined) => {
     if (!a || !isEnabled(a)) return;
     onClose();
+    onPick?.(a);
     a.onSelect?.();
   };
 
@@ -60,7 +73,7 @@ export function CommandPalette({ actions, onClose }: Props) {
                     <span className="cp-item-hint">{!isEnabled(a) && a.disabledReason ? a.disabledReason : a.hint}</span>
                   )}
                 </span>
-                <span className="cp-item-group">{a.group}</span>
+                <span className="cp-item-group">{!typing && recentSet.has(a.id) ? 'Recent' : a.group}</span>
                 {a.shortcut && <kbd className="tb-kbd">{a.shortcut}</kbd>}
               </button>
             </li>

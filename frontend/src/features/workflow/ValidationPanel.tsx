@@ -32,6 +32,7 @@ export function ValidationPanel({ result, lint, onSelectNode, onDismiss }: Props
           )}
           <HelpIcon
             title="Workflow Validation"
+              guide="checking-your-design"
             body="Checks the workflow structure for problems.\n\nErrors must be fixed before the workflow will simulate or export reliably. Common errors: missing START or END node, disconnected nodes, invalid edge references.\n\nWarnings are advisory — the workflow can still run, but something may behave unexpectedly."
           />
         </span>
@@ -60,6 +61,7 @@ export function ValidationPanel({ result, lint, onSelectNode, onDismiss }: Props
             Design findings ({lint.findings.length})
             <HelpIcon
               title="Design Findings"
+              guide="checking-your-design"
               body="Deterministic checks that go beyond structure: unreachable nodes, dead ends, decisions without two branches, API/database calls with no failure branch, human review placed after an irreversible step, fields that nothing upstream produces, and cycles.\n\nClick a finding to select the node. A badge on the node shows how many findings it has."
             />
           </div>

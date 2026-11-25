@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { APP_VERSION } from '../version';
 import { useAnalytics } from '../hooks/useAnalytics';
 
 const GITHUB_URL = 'https://github.com/fuatyazar/aiflow';
@@ -240,9 +241,11 @@ export default function LandingPage() {
           </span>
           <div className="landing-footer-links">
             <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer">GitHub</a>
+            <Link to="/guide">User guide</Link>
             <Link to="/request-access">Request access</Link>
             <Link to="/login">Sign in</Link>
             <a href="mailto:fuatyazar@gmail.com">Contact</a>
+            <span className="landing-version" data-testid="landing-version">v{APP_VERSION}</span>
           </div>
         </div>
       </footer>

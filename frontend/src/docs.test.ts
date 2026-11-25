@@ -27,6 +27,15 @@ describe('user guide', () => {
     const headings = new Set([...guide.matchAll(/^#{2,3} (.+)$/gm)].map((m) => slug(m[1])));
     for (const m of guide.matchAll(/\]\(#([^)]+)\)/g)) expect(headings.has(m[1]), m[1]).toBe(true);
   });
+
+  it('is linked from help icons only to sections that exist', () => {
+    const slug = (t: string) => t.toLowerCase().replace(/[^a-z0-9\s-]/g, '').trim().replace(/\s+/g, '-');
+    const headings = new Set([...guide.matchAll(/^#{2,3} (.+)$/gm)].map((m) => slug(m[1])));
+    const walk = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap((d) => (d.isDirectory() ? walk(join(dir, d.name)) : d.name.endsWith('.tsx') && !d.name.endsWith('.test.tsx') ? [join(dir, d.name)] : []));
+    const used = walk(here).flatMap((f) => [...readFileSync(f, 'utf-8').matchAll(/guide="([a-z0-9-]+)"/g)].map((m) => m[1]));
+    expect(used.length).toBeGreaterThanOrEqual(10);
+    for (const anchor of used) expect(headings.has(anchor), anchor).toBe(true);
+  });
 });
 
 describe('video storyboards', () => {

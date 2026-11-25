@@ -1,5 +1,23 @@
 # AiFlow — Current Iteration
 
+## Iteration 19 — Closing the Backlog
+
+#### Task 66 — Backlog Follow-ups `[x]`
+
+- [x] Save-state note next to the workflow name (unsaved / saved to cloud)
+- [x] Pass-rate-over-time chart in the Tests dialog
+- [x] Save a copy of a shared workflow into your own account
+- [x] Recent actions first in the action search
+- [x] "Read more in the user guide" links from the ⓘ help dialogs; guide link and version on the landing page
+- [x] `scripts/bump_version.py` (start a release) and `scripts/deploy.py` (deploy with the commit stamped, clean-tree check)
+- [x] Backlog rewritten: every remaining item is now Done, Needs you, or Not planned, each with its reason
+- [x] Test setup gives every test an in-memory `localStorage` (newer Node versions break jsdom's)
+- [x] The one long-failing backend test fixed (it depended on the developer's local Turnstile secret); the backend suite is fully green
+- [x] Top bar kept tidy with the new save-state note (buttons never wrap; the note is an icon until there is room)
+- [x] Tests: 20 frontend, 24 backend
+
+---
+
 ## Iteration 18 — Video Guide
 
 #### Task 65 — Video Guide Storyboards `[x]`

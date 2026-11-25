@@ -49,6 +49,7 @@ export function MermaidModal({ workflow, onImport, onClose }: Props) {
             Mermaid
             <HelpIcon
               title="Mermaid diagrams"
+              guide="exporting-and-importing"
               body="Mermaid is a text format for diagrams that GitHub, GitLab, Notion and many docs tools render directly, so a workflow can live in a README or pull request.\n\nExport writes the workflow's shape: node types, names, and branch labels. Node settings (prompts, URLs, expressions, schemas) are not part of a diagram.\n\nImport reads flowcharts written by AiFlow or by hand. Node types are taken from the shape or label; anything guessed is listed so you can fix it."
             />
           </span>

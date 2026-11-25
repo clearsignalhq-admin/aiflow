@@ -2844,3 +2844,30 @@ body {
 }
 
 .suggest-body a, .about-changelog a { color: var(--accent); }
+
+/* ── Save state, help links, landing version ───────────────────────── */
+.tb-save-state { font-size: 11px; color: var(--text-3); white-space: nowrap; }
+.tb-save-state--dirty { color: #f59e0b; }
+.help-dialog-more { padding: 0 16px 14px; font-size: 12px; }
+.help-dialog-more a { color: var(--accent); }
+.landing-version { opacity: 0.6; font-size: 12px; }
+@media (max-width: 1100px) { .tb-save-state { display: none; } }
+
+.trend { display: flex; flex-direction: column; gap: 4px; }
+.trend-chart { width: 100%; max-width: 360px; height: 56px; }
+.trend-grid { stroke: var(--border); stroke-width: 1; stroke-dasharray: 3 3; }
+.trend-line { stroke: var(--accent); stroke-width: 2; }
+.trend-dot { fill: var(--accent); }
+.trend-dot--low { fill: #f59e0b; }
+.shared-note { margin: 8px 16px 0; }
+.cp-item-group { white-space: nowrap; }
+
+/* The save state is just an icon until there is room for words; buttons never wrap onto two lines. */
+.tb-save-state-text { display: none; }
+@media (min-width: 1640px) { .tb-save-state-text { display: inline; } }
+.toolbar .btn, .tb-search { white-space: nowrap; }
+.toolbar-workflow-name { min-width: 90px; flex: 0 1 220px; }
+@media (max-width: 1500px) {
+  .tb-search-label { display: none; }
+  .tb-search { min-width: 0; }
+}

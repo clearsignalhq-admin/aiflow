@@ -151,6 +151,7 @@ export function CloudModal({ workflow, cloudId, onOpen, onCloudIdChange, onClose
             Cloud workflows
             <HelpIcon
               title="Cloud workflows"
+              guide="saving-versions-and-sharing"
               body="Keep workflows in your account instead of a file. Every save that changes something adds a version, so you can see what changed since an earlier one and restore it (restoring adds a new version; nothing is lost). The newest 30 versions are kept.\n\nShare turns on a read-only link that anyone can open without signing in. It always shows the current copy and never lets them change it. Turn it off and the link stops working for good."
             />
           </span>

@@ -4,9 +4,11 @@ import { createPortal } from 'react-dom';
 interface Props {
   title: string;
   body: string;
+  /** Id of a section of the user guide (for example `safety-checks`); adds a "Read more" link to it. */
+  guide?: string;
 }
 
-export function HelpIcon({ title, body }: Props) {
+export function HelpIcon({ title, body, guide }: Props) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -41,6 +43,11 @@ export function HelpIcon({ title, body }: Props) {
               <button className="modal-close" onClick={() => setOpen(false)} type="button">✕</button>
             </div>
             <div className="help-dialog-body">{body}</div>
+            {guide && (
+              <div className="help-dialog-more">
+                <a href={`/guide#${guide}`} target="_blank" rel="noopener noreferrer">Read more in the user guide</a>
+              </div>
+            )}
           </div>
         </div>,
         document.body,

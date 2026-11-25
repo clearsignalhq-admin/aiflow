@@ -2,6 +2,17 @@
 
 AiFlow follows `MAJOR.MINOR.PATCH`. While the product is in private beta the major number stays at 0: a new feature raises MINOR, a fix raises PATCH. The newest entry is first and must match the `VERSION` file (a test checks this).
 
+## 0.11.0 — 2026-11-24
+
+**New**
+- **Save state** next to the workflow name: "Unsaved changes" while you have edits that are not saved, "Saved to cloud" when the cloud copy matches.
+- **Pass rate over time**: a small chart in the Tests dialog of your last twelve finished runs, with how the latest compares to the one before.
+- **Save a copy** on a shared page: a signed-in visitor can add the shared workflow to their own cloud workflows.
+- **Recent actions**: the action search (Ctrl/⌘+K) shows what you used last first, marked *Recent*, until you start typing.
+- **Read more in the user guide** links at the bottom of the ⓘ help dialogs, opening the matching guide section; a **User guide** link and the version number on the landing page.
+- Maintenance: the access-request test no longer depends on a developer's local Turnstile secret (it was the one test that failed on a machine with real settings), and a new test checks that the security check is enforced when a key is set. The backend suite now passes fully.
+- Maintenance scripts: `scripts/bump_version.py` (start a release) and `scripts/deploy.py` (build and deploy with the commit stamped in, refusing to deploy uncommitted work).
+
 ## 0.10.1 — 2026-11-24
 
 **Fixed**

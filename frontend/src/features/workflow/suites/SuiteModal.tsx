@@ -8,6 +8,7 @@ import { HelpIcon } from '../../../components/HelpIcon';
 import { SuiteCasesEditor } from './SuiteCasesEditor';
 import { SuiteReport } from './SuiteReport';
 import { RunComparison } from './RunComparison';
+import { PassRateTrend } from './PassRateTrend';
 import { percent } from './format';
 import { blankCase, caseProblem } from './assertionUtils';
 import { fromDraft, serializeSuite, toDraft } from './draftUtils';
@@ -281,6 +282,7 @@ export function SuiteModal({ workflow, onClose }: Props) {
             Test Suites
             <HelpIcon
               title="Test Suites"
+              guide="test-suites"
               body="A suite is a set of test cases for this workflow. Each case has an input and checks (assertions) on the final output, for example 'output.tier equals premium' or 'visits node Human Review'.\n\nRunning a suite simulates every case in mock mode with a reproducible seed and reports a pass rate, which nodes and branches were never exercised, and where failures concentrate. Each case counts as one simulation toward your daily allowance.\n\nChecks are deterministic: there is no AI judge, so the same suite gives the same result every time."
             />
           </span>
@@ -411,6 +413,8 @@ export function SuiteModal({ workflow, onClose }: Props) {
             </div>
           )}
           {comparison && <RunComparison comparison={comparison} nodeNames={nodeNames} />}
+
+          <PassRateTrend runs={pastRuns} />
 
           {pastRuns.length > 0 && (
             <div className="suite-history">

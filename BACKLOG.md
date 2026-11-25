@@ -537,7 +537,7 @@ Design-only, before any dataset/suite work (§8.3 #4).
 
 ### Follow-ups from the async-suite design spike (Task 44)
 
-Source: `docs/AiFlow - Async Suite Runs Design.md` §9. Not scheduled.
+Source: `docs/AiFlow - Async Suite Runs Design.md` §9. All five became Tasks 46 to 50 below and are done.
 
 ### Task 46 — Durable Pause/Resume `[x]`
 
@@ -585,7 +585,7 @@ Future Directions quick win 6 / C4. Deterministic plain-language Markdown for re
 
 Future Directions D1. Real exporter generating a runnable Python project with optional tests from a suite.
 
-**Follow-ups (not scheduled):** import from LangGraph/n8n; exporters for other targets (plain Python, OpenAI Agents SDK, MCP tool definitions); implementing real integrations for TOOL/API/DATABASE/RAG from their settings; real-LLM suites.
+**Considered, not planned (see the table at the end):** import from LangGraph/n8n; exporters for other targets (plain Python, OpenAI Agents SDK, MCP tool definitions); implementing real integrations for TOOL/API/DATABASE/RAG from their settings; real-LLM suites.
 
 ---
 
@@ -597,31 +597,31 @@ Plain Python and MCP done. **OpenAI Agents SDK not done:** needs a design for ma
 
 ### Task 57 — Import from LangGraph `[x]`
 
-**Follow-ups (not scheduled):** import from n8n / other graph formats; import `workflow` code written with the functional API or classes; real LLM-written integrations for TOOL/TRANSFORM steps; a hosted run history for exported projects (production traces back onto the canvas).
+**Considered, not planned (see the table at the end):** import from n8n / other graph formats; import `workflow` code written with the functional API or classes; real LLM-written integrations for TOOL/TRANSFORM steps; a hosted run history for exported projects (production traces back onto the canvas).
 
 ---
 
 ### Task 58 — Compare Suite Runs `[x]`
 
-Future Directions B5. Done for two runs of the same suite. **Follow-ups (not scheduled):** compare across two *saved workflow versions* (needs Cloud workflows and versioning); compare a run against a baseline you mark; trend chart of pass rate across runs; prompt/model A/B (B6) on top of this.
+Future Directions B5. Done for two runs of the same suite. **Considered, not planned (see the table at the end):** compare across two *saved workflow versions* (needs Cloud workflows and versioning); compare a run against a baseline you mark; trend chart of pass rate across runs; prompt/model A/B (B6) on top of this.
 
 ---
 
 ### Task 59 — Suggested Fixes and AI-Proposed Changes `[x]`
 
-Done for design findings and free-text instructions. **Follow-ups (not scheduled):** fixes for failing test cases and for run-time errors (feed the failing check and trace to the AI); a fix for human review placed after an irreversible step; preview of a change on the canvas before applying; suggested changes for imported workflows.
+Done for design findings and free-text instructions. **Considered, not planned (see the table at the end):** fixes for failing test cases and for run-time errors (feed the failing check and trace to the AI); a fix for human review placed after an irreversible step; preview of a change on the canvas before applying; suggested changes for imported workflows.
 
 ---
 
 ### Task 60 — Resilience Drill and Injection Exposure `[x]`
 
-Future Directions B7 and B8, static and simulated parts. **Follow-ups (not scheduled):** hostile-content injection into retrieval and API payloads with a real model; PII-leakage and jailbreak case generation; running the drill as a suite and tracking it in run comparison; injecting several failures at once; per-step failure settings in test cases.
+Future Directions B7 and B8, static and simulated parts. **Considered, not planned (see the table at the end):** hostile-content injection into retrieval and API payloads with a real model; PII-leakage and jailbreak case generation; running the drill as a suite and tracking it in run comparison; injecting several failures at once; per-step failure settings in test cases.
 
 ---
 
 ### Task 61 — Cloud Workflows, Versions and Share Links `[x]`
 
-Done as described above. **Follow-ups (not scheduled):** evaluation report on the shared page (the portfolio case in Future Directions); fork a shared workflow into your own account; named/pinned versions that are never pruned; compare test-suite runs across two versions; visual (on-canvas) diff; per-link expiry and view counts; team sharing with edit rights.
+Done as described above. **Considered, not planned (see the table at the end):** evaluation report on the shared page (the portfolio case in Future Directions); fork a shared workflow into your own account; named/pinned versions that are never pruned; compare test-suite runs across two versions; visual (on-canvas) diff; per-link expiry and view counts; team sharing with edit rights.
 
 ---
 
@@ -631,29 +631,44 @@ Done as described above. **Follow-ups (not scheduled):** evaluation report on th
 
 About 20 buttons became: undo/redo, three menus (**File**: new, open, save, cloud, examples; **Export**: JSON, code, Mermaid, report; **Analyze**: explain, suggest changes, safety checks, run history), the everyday actions **Validate**, **▶ Simulate** and **Tests**, a **Search actions** command palette (Ctrl/⌘+K) that lists every action by name, and **Refine** / **Generate**, with the theme toggle and account menu on the right. One action list feeds both the menus and the palette. Menus work from the keyboard (arrows, Enter, Esc) and switch as you move along the bar; the bar shrinks gracefully on narrow windows.
 
-**Follow-ups (not scheduled):** a Help menu (guide, video guide, About) once Tasks 63-65 exist; user-customisable pinned actions; recently used actions first in the palette; a status line showing saved / unsaved / cloud state next to the workflow name.
+**Considered, not planned (see the table at the end):** a Help menu (guide, video guide, About) once Tasks 63-65 exist; user-customisable pinned actions; recently used actions first in the palette; a status line showing saved / unsaved / cloud state next to the workflow name.
 
 ---
 
 ### Task 63 — Version Number and About Screen `[x]`
 
-Starting version 0.9.0. **Follow-ups (not scheduled):** a release script that bumps `VERSION`, stamps the changelog date, tags and deploys; the deploy command stamping the commit automatically (today it is an optional parameter); showing the version in the footer of the landing page; links to the user guide and video guide in the About dialog once Tasks 64-65 exist; a minimum-supported-page version the server can enforce for breaking API changes.
+Starting version 0.9.0. **Considered, not planned (see the table at the end):** a release script that bumps `VERSION`, stamps the changelog date, tags and deploys; the deploy command stamping the commit automatically (today it is an optional parameter); showing the version in the footer of the landing page; links to the user guide and video guide in the About dialog once Tasks 64-65 exist; a minimum-supported-page version the server can enforce for breaking API changes.
 
 ---
 
 ### Task 64 — User Guide `[x]`
 
-Done as described above. **Follow-ups (not scheduled):** link the matching guide section from each ⓘ help icon; a link on the landing page; guide search; a "what's new" tour on first sign-in after a release; keeping the guide in step automatically (a test that fails when a screenshot step cannot find its control is already the early warning); translations.
+Done as described above. **Considered, not planned (see the table at the end):** link the matching guide section from each ⓘ help icon; a link on the landing page; guide search; a "what's new" tour on first sign-in after a release; keeping the guide in step automatically (a test that fails when a screenshot step cannot find its control is already the early warning); translations.
 
 ---
 
 ### Task 65 — Video Guide `[x]`
 
-Delivered as storyboards (text and screenshots) that the owner turns into videos with Google NotebookLM; no video files are produced in the repository. **Follow-ups (not scheduled):** videos for refining with AI, the Generate flow and real-model test runs (they need the live model, so they cannot be captured from the offline setup); publishing the finished videos and linking them from the landing page, the user guide and the Help menu; captions and translations; a screen-recorded variant driven by the capture script.
+Delivered as storyboards (text and screenshots) that the owner turns into videos with Google NotebookLM; no video files are produced in the repository. **Considered, not planned (see the table at the end):** videos for refining with AI, the Generate flow and real-model test runs (they need the live model, so they cannot be captured from the offline setup); publishing the finished videos and linking them from the landing page, the user guide and the Help menu; captions and translations; a screen-recorded variant driven by the capture script.
 
 ---
 
-## Future Enhancements — Polish & Operations
+## Where everything stands (2026-11-24)
+
+Every task above is done or deliberately skipped. This section replaces the old "Future Enhancements" notes: each remaining idea is either **done**, **needs you** (something only the account owner can do), or **not planned**, with the reason, so nothing is left half-open. Any "not planned" item can be reopened as a new task.
+
+### Task 66 — Backlog Follow-ups `[x]`
+
+Done in this pass: save-state note beside the workflow name; pass-rate-over-time chart in the Tests dialog; save a copy of a shared workflow into your own account (the "fork" idea); recent actions first in the action search; "Read more in the user guide" links from the ⓘ dialogs; guide link and version on the landing page; `scripts/bump_version.py` and `scripts/deploy.py`.
+
+### Needs you (only the account owner can do these)
+
+| Item | What to do |
+| --- | --- |
+| Deploy | `python scripts/deploy.py` (or `sam build` and `sam deploy`) for the backend; Amplify rebuilds the frontend on push |
+| Turn the storyboards into videos | Use `docs/video-guide/` with Google NotebookLM, then link the finished videos from the landing page and the user guide |
+| Custom SMTP, branded emails, auth rate limits | See the next section; it needs the Supabase dashboard and an SMTP provider |
+| Real-model check | Confirm that one Generate, one real-model suite run and one Suggest request work against the live model; the automated tests only use fakes |
 
 ### Custom SMTP + Branded Email Templates + Auth Rate Limits
 
@@ -664,46 +679,25 @@ Both require custom SMTP or a Supabase plan upgrade. Once unblocked:
 **Auth rate limits** — Supabase Dashboard → Authentication → Rate Limits. Recommended settings:
 
 | Endpoint | Recommended |
-|---|---|
-| Sign-in attempts | 10 / hour per IP |
-| Password reset emails | 3 / hour per IP |
-| OTP / magic link emails | 5 / hour per IP |
-| Signups | 5 / hour per IP |
+|
 
-Without these, an attacker can hammer the login endpoint or flood a user's inbox with reset emails — Turnstile only protects the frontend form, not direct Supabase API calls.
+### Not planned (and why)
 
----
-
-## Future Enhancements — Cloud & Multi-user
-
-Not scoped for any current MVP. Would transform AiFlow from a local-first tool into a proper SaaS platform.
-
-### Cloud Workflow Storage
-
-- User accounts: email/password + OAuth (Google / GitHub)
-- Server-side workflow persistence (PostgreSQL or equivalent)
-- Replace "Save → download JSON / Open → upload JSON" with auto-save to user account
-- Workflows accessible from any browser or device
-- The existing localStorage layer (added pre-MVP3) becomes a write-through cache that syncs to the server when online
-
-### Workflow Versioning
-
-- Named snapshots ("v2 — added RAG node")
-- Diff view between versions: added/removed nodes and edges highlighted on canvas
-- Restore to any previous version
-- Fork a workflow to experiment without modifying the original
-
-### Collaboration
-
-- Share a workflow by link (view-only or editable)
-- Multi-user real-time editing (operational transforms or CRDTs)
-- Comments on nodes and edges
-- Team workspaces with role-based access (owner / editor / viewer)
-
-### Architecture notes
-
-When this is tackled the backend will need:
-- Auth middleware (JWT or session-based)
-- New models: `User`, `WorkflowRecord`, `WorkflowVersion`
-- A repository layer replacing the current JSON-file storage
-- Frontend auth context, protected routes, and a sync service that merges local and remote state
+| Idea | Why not now |
+| --- | --- |
+| Export to the OpenAI Agents SDK | Needs a design for mapping a graph onto agents and handoffs, and a way to run the SDK to verify the result |
+| Import from n8n or other graph formats; LangGraph code written with the functional API or classes | Each is a new parser with its own edge cases; no user has asked |
+| Real LLM-written integrations for TOOL and TRANSFORM steps | Generated code that calls real systems needs review a person must do; the exporter leaves a clear stub instead |
+| Hosted run history for exported projects (production traces on the canvas) | A product of its own: ingestion, storage and privacy rules |
+| PII-leakage and jailbreak case generation; hostile content injected into retrieval and API payloads with a real model | Needs the live model, costs money per run, and its results vary; the offline checks already cover the structural part |
+| Injecting several failures at once; per-step failure settings in test cases; running the drill as a suite | The single-failure drill already answers the main question; revisit if people ask for it |
+| Compare runs against a baseline you mark; compare across two saved versions; named versions that are never pruned | Each needs new database columns; cheap to add when someone needs them (the 30 newest versions are kept today) |
+| Fix for human review placed after an irreversible step | Moving an approval is a judgement about intent; the finding explains the risk and the AI box can propose a change |
+| Preview a suggested change on the canvas before applying | The plain-language list of edits plus one-step undo has been enough |
+| Fixes for failing test cases and for run-time errors, suggested changes for imported workflows | Needs sending traces to the AI; costs allowance and is hard to keep trustworthy |
+| Prompt and model A/B testing (Future Directions B6) | Builds on real-model runs, which are still new |
+| Shared-page evaluation report; link expiry and view counts | Nobody has needed them yet |
+| Team workspaces and roles, editable shared links, real-time editing, comments on steps | A different product shape (multi-user collaboration); the current model is one owner per workflow |
+| OAuth sign-in (Google, GitHub); auto-save to the cloud; local-first sync | Sign-in is by invitation with email and password, which fits a private beta; saving is explicit on purpose, so versions mean something |
+| Guide search, a first-sign-in tour, translations, pinned or customisable actions, a minimum-supported-page version | Polish for a larger audience than the private beta has |
+| Videos for Generate, Refine and real-model runs | They need the live model, so they cannot be captured offline |

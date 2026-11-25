@@ -67,6 +67,7 @@ export function SafetyModal({ workflow, onSelectNode, onClose }: Props) {
             Safety checks
             <HelpIcon
               title="Safety checks"
+              guide="safety-checks"
               body="Two checks that need no AI and no setup.\n\nInjection exposure looks at the design: where text from a user, a document, an API or a database could steer an AI step into an action that changes something.\n\nThe failure drill makes each outside step fail in turn (error, timeout, empty, malformed) in a simulated run, and reports whether the workflow notices, stops, or carries on as if nothing happened."
             />
           </span>

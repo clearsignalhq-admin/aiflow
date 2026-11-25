@@ -106,6 +106,7 @@ export function ExportCodeModal({ workflow, onImport, onClose }: Props) {
             Code
             <HelpIcon
               title="Export as code"
+              guide="exporting-and-importing"
               body="Downloads the workflow as a runnable project: LangGraph or plain Python (a graph or small engine, one function per step, routing for decisions, human-review pauses, a command-line runner and tests), or an MCP server that exposes the tool, API, database and knowledge-search steps to MCP clients.\n\nThe workflow itself is included as workflow.json and every step reads its settings from there. Steps that talk to other systems (tools, APIs, databases, knowledge search) are stubs that return fixtures, so the project runs end to end today and you replace them one by one.\n\nPick a test suite to also get one generated test per case, replayed with the same seeds and checks."
             />
           </span>

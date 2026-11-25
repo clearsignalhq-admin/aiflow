@@ -62,6 +62,7 @@ export function ExplainModal({ workflow, onClose }: Props) {
             Explain this workflow
             <HelpIcon
               title="Explain this workflow"
+              guide="checking-your-design"
               body="A plain-language description built directly from the workflow: what happens step by step, where people review things, what it connects to, rough time and cost, and anything the automatic checks flagged.\n\nIt is generated from the design without using the AI model, so it is free, always matches the current workflow, and gives the same text for the same workflow. Copy or download it as Markdown to share with reviewers."
             />
           </span>

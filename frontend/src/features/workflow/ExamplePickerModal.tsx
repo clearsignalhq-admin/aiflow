@@ -89,6 +89,7 @@ export function ExamplePickerModal({ onClose, onSelect }: Props) {
             <span className="modal-title">Example Workflows</span>
             <HelpIcon
               title="Example Workflows"
+              guide="starting-a-workflow"
               body="Pre-built workflows ready to explore and simulate. Grouped by difficulty:\n\nEasy — 2–5 nodes, linear flow.\nMedium — 6–10 nodes, branching and HITL.\nComplex — 11+ nodes, multi-branch pipelines.\n\nClick any card to load the workflow onto the canvas. Search by name, industry, or tag."
             />
           </div>

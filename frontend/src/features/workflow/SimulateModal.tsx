@@ -139,6 +139,7 @@ export function SimulateModal({ workflow, onClose, onSimulated, onSampleInputSav
             <span className="modal-title">Simulate Workflow</span>
             <HelpIcon
               title="Simulate Workflow"
+              guide="simulating-a-run"
               body="Runs a mock execution of your workflow. The backend traverses the graph from START to END, calling each node's handler in order.\n\nThe execution trace appears in the panel at the bottom of the screen. Expand any step to inspect its exact input and output JSON."
             />
           </div>

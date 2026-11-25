@@ -5,6 +5,7 @@ import { UserAvatar } from './UserAvatar';
 import { ToolbarMenu } from './ToolbarMenu';
 import { CommandPalette } from './CommandPalette';
 import type { ActionItem } from './actions';
+import { pushRecent, readRecent } from './recentActions';
 
 interface Props {
   workflowName: string;
@@ -37,6 +38,8 @@ interface Props {
   onCloud?: () => void;
   onAbout?: () => void;
   onGuide?: () => void;
+  /** `dirty`: edited since it was loaded or saved. `cloud`: the workflow on screen is tied to a cloud copy. */
+  saveState?: { dirty: boolean; cloud: boolean };
   onExportCode?: () => void;
 }
 
@@ -48,12 +51,17 @@ export function Toolbar(props: Props) {
     workflowName, onNew, onSave, onOpen, onOpenExamplePicker, onValidate, onGenerate, onRefine, canRefine = false,
     onSimulate, onEditJson, onNameChange, isValidating, validationResult, isDark = true, onToggleTheme,
     onUndo, onRedo, canUndo = false, canRedo = false, onReport, onHistory, onTests, onMermaid, onExplain,
-    onSuggest, onSafety, onCloud, onExportCode, onAbout, onGuide,
+    onSuggest, onSafety, onCloud, onExportCode, onAbout, onGuide, saveState,
   } = props;
 
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const closeMenu = useCallback(() => setOpenMenu(null), []);
+  const [recent, setRecent] = useState<string[]>(readRecent);
+  const remember = useCallback((a: ActionItem) => {
+    if (a.id === 'help:search') return;                     // opening the palette is not worth remembering
+    setRecent((cur) => pushRecent(cur, a.id));
+  }, []);
 
   const hasErrors = validationResult && !validationResult.valid;
   const hasWarnings = (validationResult?.warnings.length ?? 0) > 0;   // a number here would print "0" on the button
@@ -117,6 +125,7 @@ export function Toolbar(props: Props) {
     onToggle: () => setOpenMenu((cur) => (cur === id ? null : id)),
     onHover: () => setOpenMenu((cur) => (cur === null ? cur : id)),   // only switches while one is already open
     onClose: closeMenu,
+    onPick: remember,
   });
 
   return (
@@ -126,6 +135,7 @@ export function Toolbar(props: Props) {
         <span className="toolbar-name">AiFlow</span>
         <HelpIcon
           title="AiFlow — Workflow Designer"
+              guide="quick-start-five-minutes"
           body={`AiFlow is a visual tool for designing AI agent workflows. Name your workflow in the input field, build it on the canvas, then validate, simulate, and export it.\n\nUse Generate to create a workflow from a plain-English description, or File → Examples to load a pre-built workflow.\n\nPress ${MOD}+K to search every action.`}
         />
       </div>
@@ -137,6 +147,16 @@ export function Toolbar(props: Props) {
         title="Workflow name"
         aria-label="Workflow name"
       />
+      {saveState && (saveState.dirty || saveState.cloud) && (
+        <span
+          className={`tb-save-state${saveState.dirty ? ' tb-save-state--dirty' : ''}`}
+          data-testid="save-state"
+          title={saveState.dirty ? 'You have changes that are not saved yet (File, Save to file or Cloud workflows)' : 'The cloud copy matches what is on screen'}
+        >
+          <span aria-hidden="true">{saveState.dirty ? '●' : '☁'}</span>
+          <span className="tb-save-state-text"> {saveState.dirty ? 'Unsaved changes' : 'Saved to cloud'}</span>
+        </span>
+      )}
 
       <div className="tb-group" role="group" aria-label="History">
         <button className="btn btn-ghost tb-icon" onClick={onUndo} disabled={!canUndo} title={`Undo (${MOD}+Z)`} aria-label="Undo">↶</button>
@@ -191,7 +211,7 @@ export function Toolbar(props: Props) {
         <UserAvatar />
       </div>
 
-      {paletteOpen && <CommandPalette actions={allActions} onClose={() => setPaletteOpen(false)} />}
+      {paletteOpen && <CommandPalette actions={allActions} recentIds={recent} onPick={remember} onClose={() => setPaletteOpen(false)} />}
     </header>
   );
 }

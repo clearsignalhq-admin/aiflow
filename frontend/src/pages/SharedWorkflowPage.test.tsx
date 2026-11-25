@@ -1,8 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import SharedWorkflowPage from './SharedWorkflowPage';
 import { NodeType } from '../models/workflow';
+
+let session: { access_token: string } | null = null;
+vi.mock('../context/AuthContext', () => ({ useAuth: () => ({ session }) }));
 
 // The canvas needs a real layout engine; what matters here is what the page decides to show.
 vi.mock('@xyflow/react', () => ({
@@ -25,12 +28,16 @@ const workflow = {
 };
 
 let seen: string[];
+let bodies: unknown[];
 let reply: { status: number; body: unknown };
 
 beforeEach(() => {
+  session = null;
   seen = [];
+  bodies = [];
   reply = { status: 200, body: { name: 'Public demo', workflow, shared_at: '2026-11-25T10:00:00Z' } };
   vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
+    bodies.push(init.body ? JSON.parse(String(init.body)) : undefined);
     seen.push(`${init.method ?? 'GET'} ${url} auth=${JSON.stringify((init.headers as Record<string, string>).Authorization ?? null)}`);
     return { ok: reply.status < 400, status: reply.status, json: async () => reply.body } as Response;
   });
@@ -79,5 +86,38 @@ describe('SharedWorkflowPage', () => {
     renderAt('a%2Fb');
     await screen.findByRole('heading', { name: 'Public demo' });
     expect(seen[0]).not.toContain('/api/shared/a/b');
+  });
+
+  describe('saving a copy', () => {
+    it('is offered instead of the sign-in link when signed in', async () => {
+      session = { access_token: 'tok' };
+      renderAt('abc123');
+      await screen.findByRole('heading', { name: 'Public demo' });
+      expect(screen.getByRole('button', { name: 'Save a copy to my cloud workflows' })).toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: 'Sign in to build your own' })).toBeNull();
+    });
+
+    it('saves the workflow to the visitor’s own account, then points at the editor', async () => {
+      session = { access_token: 'tok' };
+      renderAt('abc123');
+      await screen.findByRole('heading', { name: 'Public demo' });
+      reply = { status: 201, body: { id: 'new', name: 'Public demo (copy)' } };
+      fireEvent.click(screen.getByRole('button', { name: 'Save a copy to my cloud workflows' }));
+      expect(await screen.findByRole('status')).toHaveTextContent('Saved “Public demo (copy)”');
+      expect(screen.getByRole('link', { name: 'Open the editor' })).toHaveAttribute('href', '/app');
+      const post = seen.findIndex((s) => s.startsWith('POST'));
+      expect(seen[post]).toMatch(/\/api\/cloud\/workflows auth="Bearer tok"$/);
+      expect(bodies[post]).toMatchObject({ name: 'Public demo (copy)', label: 'Copied from a shared link', workflow: { id: 'wf' } });
+    });
+
+    it('shows why a copy could not be saved (for example the 30-workflow limit)', async () => {
+      session = { access_token: 'tok' };
+      renderAt('abc123');
+      await screen.findByRole('heading', { name: 'Public demo' });
+      reply = { status: 409, body: { detail: 'You can keep at most 30 workflows in the cloud. Delete one first.' } };
+      fireEvent.click(screen.getByRole('button', { name: 'Save a copy to my cloud workflows' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent('at most 30 workflows');
+      expect(screen.getByRole('button', { name: 'Save a copy to my cloud workflows' })).toBeEnabled();     // can try again
+    });
   });
 });

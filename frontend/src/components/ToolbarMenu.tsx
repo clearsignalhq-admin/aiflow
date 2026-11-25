@@ -10,10 +10,12 @@ interface Props {
   /** Called when the pointer enters while another menu is open, so moving along the bar switches menus. */
   onHover: () => void;
   onClose: () => void;
+  /** Called with the item just chosen (used to remember recent actions). */
+  onPick?: (item: ActionItem) => void;
 }
 
 /** A dropdown button with keyboard support: Enter/Space/↓ opens, ↑/↓ move, Enter picks, Esc closes. */
-export function ToolbarMenu({ label, items, open, onToggle, onHover, onClose }: Props) {
+export function ToolbarMenu({ label, items, open, onToggle, onHover, onClose, onPick }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
@@ -81,7 +83,7 @@ export function ToolbarMenu({ label, items, open, onToggle, onHover, onClose }: 
                   className="tb-menu-item"
                   disabled={!isEnabled(item)}
                   title={!isEnabled(item) ? item.disabledReason : item.hint}
-                  onClick={() => { onClose(); item.onSelect?.(); }}
+                  onClick={() => { onClose(); onPick?.(item); item.onSelect?.(); }}
                 >
                   <span className="tb-menu-item-label">{item.label}</span>
                   {item.shortcut && <kbd className="tb-kbd">{item.shortcut}</kbd>}

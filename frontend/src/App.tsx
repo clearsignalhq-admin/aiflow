@@ -587,6 +587,7 @@ export default function WorkflowApp() {
         onCloud={handleOpenCloud}
         onAbout={handleOpenAbout}
         onGuide={handleOpenGuide}
+        saveState={{ dirty: isDirty, cloud: cloudId !== null }}
         onExportCode={handleOpenExportCode}
         onGenerate={handleGenerate}
         onRefine={handleRefine}

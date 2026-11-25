@@ -55,7 +55,8 @@ def _clear_overrides():
 
 @pytest.mark.asyncio
 async def test_submit_access_request_success():
-    with patch("app.api.user_routes.insert_access_request", new_callable=AsyncMock) as mock_insert:
+    # Hermetic: a developer's real .env may hold a Turnstile secret, which would (rightly) reject a request with no token.
+    with patch("app.api.user_routes.settings.turnstile_secret_key", ""),          patch("app.api.user_routes.insert_access_request", new_callable=AsyncMock) as mock_insert:
         mock_insert.return_value = None
         async with AsyncClient(transport=_transport(), base_url=BASE) as client:
             res = await client.post("/api/access-requests", json={
@@ -67,6 +68,21 @@ async def test_submit_access_request_success():
     assert res.status_code == 201
     assert "received" in res.json()["message"].lower()
     mock_insert.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_submit_access_request_is_refused_without_a_valid_security_check_when_one_is_configured():
+    body = {"name": "Alice", "email": "alice@example.com"}
+    with patch("app.api.user_routes.settings.turnstile_secret_key", "secret"),          patch("app.api.user_routes.insert_access_request", new_callable=AsyncMock) as mock_insert:
+        async with AsyncClient(transport=_transport(), base_url=BASE) as client:
+            no_token = await client.post("/api/access-requests", json=body)
+            with patch("app.api.user_routes._verify_turnstile", new_callable=AsyncMock, return_value=False):
+                bad_token = await client.post("/api/access-requests", json={**body, "turnstile_token": "nope"})
+            with patch("app.api.user_routes._verify_turnstile", new_callable=AsyncMock, return_value=True):
+                good_token = await client.post("/api/access-requests", json={**body, "turnstile_token": "ok"})
+    assert no_token.status_code == 400 and bad_token.status_code == 400
+    assert good_token.status_code == 201
+    mock_insert.assert_awaited_once()                                                  # only the verified request was stored
 
 
 @pytest.mark.asyncio

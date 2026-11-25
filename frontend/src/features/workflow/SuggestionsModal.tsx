@@ -107,6 +107,7 @@ export function SuggestionsModal({ workflow, onApply, onClose }: Props) {
             Suggested changes
             <HelpIcon
               title="Suggested changes"
+              guide="suggested-changes"
               body="Fixes for what the design checks flag are worked out directly from the workflow, so they are free and always the same. You can also describe a change in your own words and the AI will propose edits (this uses one AI request).\n\nNothing changes until you press Apply. Each suggestion is applied all together or not at all, is checked by the server first, and can be undone with Ctrl+Z."
             />
           </span>
