@@ -28,6 +28,40 @@ describe('useWorkflowHistory', () => {
     expect(result.current.canRedo).toBe(false);
   });
 
+  it('ignores an update that changes nothing: no undo step, same state object', () => {
+    const initial = createDefaultWorkflow();
+    const { result } = renderHook(() => useWorkflowHistory(initial));
+
+    act(() => result.current.setWorkflow(JSON.parse(JSON.stringify(initial))));          // an equal copy, as the canvas reports on first layout
+    act(() => result.current.setWorkflow((wf) => ({ ...wf })));                         // an updater that returns an equal workflow
+
+    expect(result.current.workflow).toBe(initial);
+    expect(result.current.canUndo).toBe(false);
+  });
+
+  it('still records a real change after ignored ones, and undo goes back one step only', () => {
+    const initial = createDefaultWorkflow();
+    const { result } = renderHook(() => useWorkflowHistory(initial));
+
+    act(() => result.current.setWorkflow({ ...initial }));
+    act(() => result.current.setWorkflow({ ...initial, name: 'Edited' }));
+    act(() => result.current.setWorkflow({ ...initial, name: 'Edited' }));              // the same edit reported again
+    act(() => result.current.undo());
+
+    expect(result.current.workflow).toBe(initial);
+    expect(result.current.canUndo).toBe(false);                                         // one real step, not three
+  });
+
+  it('a moved step is a change', () => {
+    const initial = createDefaultWorkflow();
+    const { result } = renderHook(() => useWorkflowHistory(initial));
+    const moved = { ...initial, nodes: initial.nodes.map((n, i) => (i === 0 ? { ...n, position: { x: n.position.x + 10, y: n.position.y } } : n)) };
+
+    act(() => result.current.setWorkflow(moved));
+
+    expect(result.current.canUndo).toBe(true);
+  });
+
   it('setWorkflow accepts a functional updater', () => {
     const initial = createDefaultWorkflow();
     const { result } = renderHook(() => useWorkflowHistory(initial));

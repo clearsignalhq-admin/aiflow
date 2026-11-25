@@ -80,7 +80,7 @@ Once you have a workflow, **Refine** lets you ask for changes in a conversation 
 
 ### Start from an example
 
-**File → Examples…** has ten ready-made workflows in three levels (easy, medium, complex) from several industries. Search by name, industry or tag. They are the best way to see what a good design looks like.
+**File → Examples…** has twelve ready-made workflows in three levels (easy, medium, complex) from several industries. Search by name, industry or tag. Most of them show good practice: outside steps are checked, failures are handled, and a person reviews anything a model wrote before it changes something. **Refund Request Handler** is the clearest example of that. **Supply Chain Monitor** is the exception on purpose, left with design findings so you can try the checks on it.
 
 ![The example library](images/03-examples.png)
 

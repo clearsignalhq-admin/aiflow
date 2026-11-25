@@ -221,12 +221,21 @@ def _is_irreversible(node: WorkflowNode) -> bool:
     return False
 
 
+# Labels of a branch that is taken when something went wrong. A human review reached only through such a branch is
+# handling the failure (for example "the payment did not confirm"), not approving something that has already happened.
+_FAILURE_LABELS = {"false", "no", "error", "failed", "failure", "fail", "unsuccessful"}
+
+
 def _hitl_after_irreversible(g: _Graph) -> list[LintFinding]:
     findings: list[LintFinding] = []
+    inc_normal: dict[str, list[str]] = defaultdict(list)       # who leads here, ignoring failure branches
+    for e in g.workflow.edges:
+        if e.source in g.nodes and e.target in g.nodes and (e.condition or "").strip().lower() not in _FAILURE_LABELS:
+            inc_normal[e.target].append(e.source)
     for node in g.workflow.nodes:
         if node.type != NodeType.HITL:
             continue
-        ancestors = g.reach([node.id], g.inc)
+        ancestors = g.reach([node.id], inc_normal)
         culprits = sorted(g.name(a) for a in ancestors if a != node.id and _is_irreversible(g.nodes[a]))
         if culprits:
             findings.append(_finding(

@@ -2,37 +2,76 @@
   "version": "1.0",
   "id": "easy-data-enrichment",
   "name": "Data Enrichment Pipeline",
-  "description": "Fetches external company data for a domain, normalises the fields, and outputs an enriched record.",
+  "description": "Fetches external company data for a domain, normalises the fields, and outputs an enriched record. If the lookup fails, the workflow ends cleanly instead of passing bad data on.",
   "nodes": [
     {
       "id": "start",
       "type": "START",
       "name": "Start",
-      "position": { "x": 350, "y": 80 },
+      "position": {
+        "x": 450,
+        "y": 80
+      },
       "config": {}
     },
     {
       "id": "fetch-data",
       "type": "API",
       "name": "Fetch Enrichment Data",
-      "position": { "x": 350, "y": 240 },
+      "position": {
+        "x": 450,
+        "y": 230
+      },
       "config": {
         "method": "GET",
         "url": "https://api.clearbit.com/v2/companies/find?domain={{input.domain}}",
-        "headers": { "Authorization": "Bearer env:CLEARBIT_API_KEY" }
+        "headers": {
+          "Authorization": "Bearer env:CLEARBIT_API_KEY"
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "industry": {
+            "type": "string"
+          },
+          "employee_count": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "domain": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ok",
+          "name"
+        ]
       }
     },
     {
       "id": "normalise",
       "type": "TRANSFORM",
       "name": "Normalise Fields",
-      "position": { "x": 350, "y": 400 },
+      "position": {
+        "x": 335,
+        "y": 530
+      },
       "config": {
         "mapping": {
-          "company_name":   "name",
-          "industry":       "category.industry",
+          "company_name": "name",
+          "industry": "category.industry",
           "employee_count": "metrics.employees",
-          "country":        "geo.country"
+          "country": "geo.country"
         }
       }
     },
@@ -40,19 +79,68 @@
       "id": "end",
       "type": "END",
       "name": "End",
-      "position": { "x": 350, "y": 560 },
+      "position": {
+        "x": 450,
+        "y": 680
+      },
       "config": {}
+    },
+    {
+      "id": "end-failed",
+      "type": "END",
+      "name": "Enrichment Failed",
+      "position": {
+        "x": 565,
+        "y": 530
+      },
+      "config": {}
+    },
+    {
+      "id": "fetch-data-ok",
+      "type": "CONDITION",
+      "name": "Lookup succeeded?",
+      "position": {
+        "x": 450,
+        "y": 380
+      },
+      "config": {
+        "expression": "output.ok"
+      }
     }
   ],
   "edges": [
-    { "source": "start",      "target": "fetch-data" },
-    { "source": "fetch-data", "target": "normalise" },
-    { "source": "normalise",  "target": "end" }
+    {
+      "source": "start",
+      "target": "fetch-data"
+    },
+    {
+      "source": "normalise",
+      "target": "end"
+    },
+    {
+      "source": "fetch-data",
+      "target": "fetch-data-ok"
+    },
+    {
+      "source": "fetch-data-ok",
+      "target": "normalise",
+      "condition": "true"
+    },
+    {
+      "source": "fetch-data-ok",
+      "target": "end-failed",
+      "condition": "false"
+    }
   ],
   "metadata": {
     "difficulty": "easy",
     "industry": "Sales / CRM",
-    "tags": ["api", "transform", "enrichment"],
+    "tags": [
+      "api",
+      "transform",
+      "enrichment",
+      "failure-handling"
+    ],
     "sample_input": {
       "domain": "acme.com"
     }

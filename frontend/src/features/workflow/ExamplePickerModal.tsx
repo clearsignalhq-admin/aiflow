@@ -3,43 +3,13 @@ import type { Workflow } from '../../models/workflow';
 import { deserializeWorkflow } from '../../utils/workflowSerializer';
 import { HelpIcon } from '../../components/HelpIcon';
 
-// ── Static example catalog ───────────────────────────────────────────
-import emailAutoReply        from '../../../../examples/easy/email-auto-reply.json';
-import sentimentClassifier   from '../../../../examples/easy/sentiment-classifier.json';
-import dataEnrichment        from '../../../../examples/easy/data-enrichment.json';
-import customerSupport       from '../../../../examples/medium/customer-support.json';
-import contentModeration     from '../../../../examples/medium/content-moderation.json';
-import invoiceProcessing     from '../../../../examples/medium/invoice-processing.json';
-import hrOnboarding          from '../../../../examples/medium/hr-onboarding.json';
-import aiResearchAgent       from '../../../../examples/complex/ai-research-agent.json';
-import supplyChainMonitor    from '../../../../examples/complex/supply-chain-monitor.json';
-import multiAgentJourney     from '../../../../examples/complex/multi-agent-customer-journey.json';
-
-interface ExampleEntry {
-  json: object;
-  difficulty: 'easy' | 'medium' | 'complex';
-  industry: string;
-  nodeCount: number;
-  tags: string[];
-}
-
-const CATALOG: ExampleEntry[] = [
-  { json: emailAutoReply,      difficulty: 'easy',    industry: 'Customer Service',       nodeCount: 3,  tags: ['email', 'llm', 'auto-reply'] },
-  { json: sentimentClassifier, difficulty: 'easy',    industry: 'Marketing',              nodeCount: 5,  tags: ['sentiment', 'classification', 'routing'] },
-  { json: dataEnrichment,      difficulty: 'easy',    industry: 'Sales / CRM',            nodeCount: 4,  tags: ['api', 'transform', 'enrichment'] },
-  { json: customerSupport,     difficulty: 'medium',  industry: 'Customer Service',       nodeCount: 8,  tags: ['rag', 'hitl', 'routing'] },
-  { json: contentModeration,   difficulty: 'medium',  industry: 'Social Media / Platform',nodeCount: 7,  tags: ['content-moderation', 'rag', 'hitl'] },
-  { json: invoiceProcessing,   difficulty: 'medium',  industry: 'Finance / Operations',   nodeCount: 7,  tags: ['invoice', 'approval', 'database', 'hitl'] },
-  { json: hrOnboarding,        difficulty: 'medium',  industry: 'Human Resources',        nodeCount: 7,  tags: ['hr', 'onboarding', 'hitl', 'database'] },
-  { json: aiResearchAgent,     difficulty: 'complex', industry: 'Research & Analytics',   nodeCount: 12, tags: ['research', 'rag', 'tool', 'hitl'] },
-  { json: supplyChainMonitor,  difficulty: 'complex', industry: 'Supply Chain / Logistics',nodeCount: 11, tags: ['supply-chain', 'api', 'hitl', 'database'] },
-  { json: multiAgentJourney,   difficulty: 'complex', industry: 'E-commerce / CRM',       nodeCount: 12, tags: ['personalisation', 'rag', 'hitl', 'multi-branch'] },
-];
+import { CATALOG } from './exampleCatalog';
+import type { ExampleEntry } from './exampleCatalog';
 
 const SECTIONS: { key: 'easy' | 'medium' | 'complex'; label: string; subtitle: string }[] = [
-  { key: 'easy',    label: 'Easy',    subtitle: '2–5 nodes · linear flow' },
-  { key: 'medium',  label: 'Medium',  subtitle: '6–10 nodes · branching + HITL' },
-  { key: 'complex', label: 'Complex', subtitle: '11+ nodes · multi-branch' },
+  { key: 'easy',    label: 'Easy',    subtitle: 'short flows · a few steps' },
+  { key: 'medium',  label: 'Medium',  subtitle: 'branching · human review · failure handling' },
+  { key: 'complex', label: 'Complex', subtitle: 'multi-branch pipelines' },
 ];
 
 const DIFFICULTY_COLOR: Record<string, string> = {
@@ -90,7 +60,7 @@ export function ExamplePickerModal({ onClose, onSelect }: Props) {
             <HelpIcon
               title="Example Workflows"
               guide="starting-a-workflow"
-              body="Pre-built workflows ready to explore and simulate. Grouped by difficulty:\n\nEasy — 2–5 nodes, linear flow.\nMedium — 6–10 nodes, branching and HITL.\nComplex — 11+ nodes, multi-branch pipelines.\n\nClick any card to load the workflow onto the canvas. Search by name, industry, or tag."
+              body="Pre-built workflows ready to explore and simulate. Grouped by difficulty:\n\nEasy — short flows with a few steps.\nMedium — branching, human review and failure handling.\nComplex — multi-branch pipelines.\n\nMost examples handle failures and keep a person in the loop before anything is changed, so they are good patterns to copy. Supply Chain Monitor is the exception on purpose: try Validate, Suggest changes and Safety checks on it.\n\nClick any card to load the workflow onto the canvas. Search by name, industry, or tag."
             />
           </div>
           <button className="modal-close" onClick={onClose}>✕</button>

@@ -22,7 +22,7 @@
 
 **On screen:** highlight the **File** menu path in a caption, then the *Supply Chain Monitor* card in the "Complex" row.
 
-**Narration:** Start with File, then Examples. There are ten ready-made workflows, from easy to complex. Pick Supply Chain Monitor. It watches stock levels, and then either raises an alert and asks a person to decide, or simply logs a recommendation.
+**Narration:** Start with File, then Examples. There are twelve ready-made workflows, from easy to complex. Pick Supply Chain Monitor, the one we will use throughout. It watches stock levels, and then either raises an alert and asks a person to decide, or simply logs a recommendation.
 
 ---
 

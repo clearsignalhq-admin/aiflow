@@ -5,9 +5,70 @@ AiFlow deploys as two independent services:
 - **Backend** — AWS Lambda + API Gateway via AWS SAM
 - **Frontend** — AWS Amplify (static hosting, built from `frontend/dist`)
 
+There are two ways through this document. **Releasing a new version** (next section) is the everyday routine and uses the helper scripts. **Steps 1 to 4** are the first-time setup and also the manual fallback: everything the scripts do is spelled out there.
+
 ---
 
-## Prerequisites
+## Quick path: releasing a new version
+
+Use this once the first deployment (Steps 1 to 4 below) is done. It is the everyday routine.
+
+### 1. Prepare the release
+
+```powershell
+cd C:\dev\aiflow
+python scripts/bump_version.py patch      # a fix:      0.11.0 -> 0.11.1
+python scripts/bump_version.py minor      # a feature:  0.11.0 -> 0.12.0
+python scripts/bump_version.py major      # a breaking change, or leaving beta
+```
+
+This changes `VERSION`, adds an entry for the new number at the top of `CHANGELOG.md`, and copies the number into `backend/app/version.py` and `frontend/package.json`. Then:
+
+1. Replace the placeholder text in the new `CHANGELOG.md` entry with what changed (this is what people read under **Help → About**).
+2. Run the tests: `cd backend; .venv\Scripts\python.exe -m pytest -q` and `cd ..\frontend; npm test`. A test fails if the version numbers disagree or the changelog does not lead with the current version.
+3. If the release adds a database change, apply the new `supabase/update_*.sql` file in the Supabase SQL editor **before** deploying the backend.
+4. Commit. Optionally tag it: `git tag vX.Y.Z`.
+
+### 2. Deploy the backend
+
+```powershell
+python scripts/deploy.py --dry-run      # shows the commands, runs nothing
+python scripts/deploy.py                # sam build, then sam deploy
+```
+
+What the script does:
+
+- refuses to run if there are uncommitted changes, because the commit it stamps into the server would then not describe what is deployed (`--allow-dirty` overrides this);
+- reads the `parameter_overrides` already in `samconfig.toml` and adds `GitCommit=<short commit id>`, so nothing else changes. Settings the config does not mention (the secrets) keep their previous values, exactly as with a plain `sam deploy`;
+- finds `sam` on the PATH before running anything. On Windows the SAM CLI is `sam.cmd`, which the script resolves for you; if it is not installed you get a clear message instead of a crash;
+- then runs `sam build` and `sam deploy`. SAM still asks you to confirm the change set (`confirm_changeset = true` in `samconfig.toml`).
+
+### 3. Deploy the frontend
+
+Push to `main`. Amplify builds and deploys automatically (Step 3c).
+
+**Order:** to avoid a short period where the page is newer than the server (for a minor or major release the app then shows a "newer than the server" banner; a patch release does not, because patch differences are treated as compatible), commit locally, run `python scripts/deploy.py` first, and push afterwards. If the order is reversed nothing breaks; the banner just appears until the backend catches up.
+
+### 4. Check it
+
+- **Help → About AiFlow**: the page version and the server version are the same, and the server shows the commit you deployed (not `unknown`).
+- `GET https://<api-gateway-url>/api/health` returns the version and commit.
+- Run the post-deploy checklist (Step 4 below), at least the parts that touch what changed.
+
+### If the script fails
+
+| Symptom | Cause and fix |
+| --- | --- |
+| "There are uncommitted changes" | Commit first, or use `--allow-dirty` (the stamped commit will then be the previous one) |
+| "'sam' was not found on the PATH" | Install the AWS SAM CLI and open a new terminal |
+| A SAM or CloudFormation error | The script only wraps SAM; read the error as you would for a plain deploy |
+| Anything else, or you simply prefer to | Use the manual steps in **Step 2b** below. They do the same thing; the only difference is that the server's commit shows as `unknown` |
+
+The manual steps below are the explanation of what the script automates and the fallback if it ever breaks. They remain correct and are kept as they were; only their headings are relabelled, and a note on stamping the commit by hand is added to Step 2b.
+
+---
+
+## Prerequisites (first-time setup)
 
 - [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html) installed
 - [AWS SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html) installed
@@ -95,7 +156,7 @@ When prompted, enter:
 
 SAM will output the **API Gateway URL** at the end — copy it, you'll need it for the frontend env var.
 
-### 2b — Subsequent deploys
+### 2b — Subsequent deploys (manual; this is what `scripts/deploy.py` automates)
 
 ```powershell
 sam build && sam deploy
@@ -110,6 +171,11 @@ sam build
 sam deploy --profile aiflow
 ```
 
+A plain `sam deploy` leaves the server's commit as `unknown`. To stamp it by hand, add the parameter yourself:
+
+```powershell
+sam deploy --parameter-overrides "<the overrides from samconfig.toml> GitCommit=$(git rev-parse --short HEAD)"
+```
 
 ---
 
@@ -143,12 +209,15 @@ Push any commit to `main` — Amplify builds and deploys automatically. Or click
 
 ## Step 4 — Post-deploy checklist
 
-- [ ] `GET https://<api-gateway-url>/api/health` returns `{"status": "ok"}`
+- [ ] `GET https://<api-gateway-url>/api/health` returns `{"status": "ok", "version": "...", "commit": "..."}`
+- [ ] **Help → About AiFlow** shows the same version for the page and the server
 - [ ] Landing page loads at the Amplify URL
 - [ ] Login works and redirects to `/app`
 - [ ] Workflow generate and simulate work end-to-end
 - [ ] Admin panel accessible at `/app/admin`
 - [ ] Backend logs show `bootstrap: promoted <email> to approved admin` on startup
+- [ ] `https://<frontend-url>/guide` loads the user guide with its screenshots
+- [ ] Open a cloud share link in a private window: the shared page loads without signing in (this needs the single-page-app rewrite in Amplify, which serves `index.html` for unknown paths)
 
 ---
 
@@ -161,7 +230,8 @@ Push any commit to `main` — Amplify builds and deploys automatically. Or click
 | `LLM_API_KEY` | LLM provider API key |
 | `LLM_MODEL` | Model name (default: `gpt-4o-mini`) |
 | `LLM_BASE_URL` | Leave empty for OpenAI |
-| `CORS_ORIGINS` | Set automatically from `FrontendOrigin` parameter |
+| `CORS_ORIGINS` | Set in `template.yaml` from the `FrontendOrigin` parameter, plus `https://aiflow.fuatyazar.com` and `http://localhost:5173` |
+| `GIT_COMMIT` | Short commit id shown by `/api/health` and Help → About; set from the `GitCommit` parameter (`scripts/deploy.py` fills it in) |
 | `SUPABASE_URL` | Supabase project URL |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (never expose to frontend) |
 | `SUPABASE_JWT_SECRET` | Supabase JWT secret |

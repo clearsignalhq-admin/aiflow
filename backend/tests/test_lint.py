@@ -101,6 +101,32 @@ def test_hitl_after_irreversible(node, expected):
     assert ("hitl-after-irreversible" in rules(wf)) is expected
 
 
+def _after_failed_write(label):
+    """START -> write -> CONDITION -> (success) END / (<label>) HITL -> END"""
+    return Workflow(
+        nodes=[N("s", NodeType.START), N("w", NodeType.DATABASE, config={"query": "INSERT INTO t VALUES (1)"}),
+               N("c", NodeType.CONDITION, config={"expression": "output.ok"}), N("h", NodeType.HITL, config={"instructions": "fix it"}),
+               N("e", NodeType.END), N("e2", NodeType.END)],
+        edges=[E("s", "w"), E("w", "c"), E("c", "e", "true"), E("c", "h", label), E("h", "e2")],
+    )
+
+
+@pytest.mark.parametrize("label", ["false", "no", "error", "failed", "FAILURE", " Fail "])
+def test_a_review_on_the_failure_branch_of_a_write_is_not_an_approval_after_the_fact(label):
+    assert "hitl-after-irreversible" not in rules(_after_failed_write(label))
+
+
+@pytest.mark.parametrize("label", ["true", "yes", "ok", "needs-review", None])
+def test_a_review_on_the_normal_path_after_a_write_is_still_flagged(label):
+    assert "hitl-after-irreversible" in rules(_after_failed_write(label))
+
+
+def test_a_review_reachable_both_ways_is_still_flagged():
+    wf = _after_failed_write("false")
+    wf.edges.append(E("c", "h", "true"))                                                  # the success path also leads to the review
+    assert "hitl-after-irreversible" in rules(wf)
+
+
 def test_hitl_before_write_is_fine():
     wf = Workflow(
         nodes=[N("s", NodeType.START), N("h", NodeType.HITL), N("w", NodeType.DATABASE, config={"query": "DELETE FROM t"}),

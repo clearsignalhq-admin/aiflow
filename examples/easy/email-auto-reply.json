@@ -2,42 +2,73 @@
   "version": "1.0",
   "id": "easy-email-auto-reply",
   "name": "Email Auto-Reply",
-  "description": "Reads an incoming support email and generates a professional reply using an LLM.",
+  "description": "Reads an incoming support email and drafts a professional reply with an LLM. The simplest useful workflow: one model step between Start and End.",
   "nodes": [
     {
       "id": "start",
       "type": "START",
       "name": "Start",
-      "position": { "x": 350, "y": 80 },
+      "position": {
+        "x": 450,
+        "y": 80
+      },
       "config": {}
     },
     {
       "id": "draft-reply",
       "type": "LLM",
       "name": "Draft Reply",
-      "position": { "x": 350, "y": 240 },
+      "position": {
+        "x": 450,
+        "y": 230
+      },
       "config": {
         "model": "gpt-4o-mini",
         "prompt": "You are a customer support agent. Read the incoming email and write a helpful, professional reply. Be concise and friendly. Input: {{input}}",
         "temperature": 0.4
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "reply": {
+            "type": "string",
+            "example": "Hi Sam, thanks for getting in touch. I have reset your password; please check your inbox."
+          }
+        },
+        "required": [
+          "reply"
+        ]
       }
     },
     {
       "id": "end",
       "type": "END",
       "name": "End",
-      "position": { "x": 350, "y": 400 },
+      "position": {
+        "x": 450,
+        "y": 380
+      },
       "config": {}
     }
   ],
   "edges": [
-    { "source": "start",       "target": "draft-reply" },
-    { "source": "draft-reply", "target": "end" }
+    {
+      "source": "start",
+      "target": "draft-reply"
+    },
+    {
+      "source": "draft-reply",
+      "target": "end"
+    }
   ],
   "metadata": {
     "difficulty": "easy",
     "industry": "Customer Service",
-    "tags": ["email", "llm", "auto-reply"],
+    "tags": [
+      "email",
+      "llm",
+      "auto-reply"
+    ],
     "sample_input": {
       "input": "Hi, I've been trying to reset my password for 3 days and nothing is working. Please help!"
     }

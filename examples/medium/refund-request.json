@@ -1,0 +1,302 @@
+{
+  "version": "1.0",
+  "id": "medium-refund-request",
+  "name": "Refund Request Handler",
+  "description": "Looks up the order, has a model classify the customer's message, and only issues a refund after a person approves it. The model never touches the payment system directly: a human review sits between its answer and the money. A good pattern to compare with the Safety checks.",
+  "nodes": [
+    {
+      "id": "start",
+      "type": "START",
+      "name": "Start",
+      "position": {
+        "x": 450,
+        "y": 80
+      },
+      "config": {}
+    },
+    {
+      "id": "fetch-order",
+      "type": "API",
+      "name": "Fetch Order",
+      "position": {
+        "x": 450,
+        "y": 230
+      },
+      "config": {
+        "method": "GET",
+        "url": "https://api.internal/orders/{{input.order_id}}",
+        "headers": {
+          "Authorization": "Bearer env:ORDERS_API_TOKEN"
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "order_id": {
+            "type": "string"
+          },
+          "amount_usd": {
+            "type": "number",
+            "minimum": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "delivered"
+            ]
+          }
+        },
+        "required": [
+          "ok",
+          "order_id"
+        ]
+      }
+    },
+    {
+      "id": "end-order-not-found",
+      "type": "END",
+      "name": "Order Not Found",
+      "position": {
+        "x": 335,
+        "y": 530
+      },
+      "config": {}
+    },
+    {
+      "id": "classify-request",
+      "type": "LLM",
+      "name": "Classify Request",
+      "position": {
+        "x": 565,
+        "y": 530
+      },
+      "config": {
+        "model": "gpt-4o-mini",
+        "temperature": 0,
+        "prompt": "Classify the customer's message as exactly one of: refund, exchange, other. If it is a refund request, also give the amount the customer is asking for. Message: {{input.message}}"
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": [
+              "refund"
+            ]
+          },
+          "refund_amount_usd": {
+            "type": "number",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "category"
+        ]
+      }
+    },
+    {
+      "id": "route",
+      "type": "CONDITION",
+      "name": "Refund Request?",
+      "position": {
+        "x": 450,
+        "y": 680
+      },
+      "config": {
+        "expression": "\"refund\" if input.category == \"refund\" else \"other\""
+      }
+    },
+    {
+      "id": "refund-approval",
+      "type": "HITL",
+      "name": "Refund Approval",
+      "position": {
+        "x": 335,
+        "y": 830
+      },
+      "config": {
+        "instructions": "Check the order and the customer's message. Approve the refund, or reject it with a reason. Nothing is paid until you approve."
+      }
+    },
+    {
+      "id": "issue-refund",
+      "type": "API",
+      "name": "Issue Refund",
+      "position": {
+        "x": 450,
+        "y": 980
+      },
+      "config": {
+        "method": "POST",
+        "url": "https://api.internal/payments/refunds",
+        "headers": {
+          "Authorization": "Bearer env:PAYMENTS_API_TOKEN"
+        },
+        "body": {
+          "order_id": "{{input.order_id}}",
+          "amount_usd": "{{classify_request.refund_amount_usd}}"
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "refund_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ok"
+        ]
+      }
+    },
+    {
+      "id": "end-refunded",
+      "type": "END",
+      "name": "Refund Issued",
+      "position": {
+        "x": 335,
+        "y": 1280
+      },
+      "config": {}
+    },
+    {
+      "id": "hitl-payments",
+      "type": "HITL",
+      "name": "Payments Follow-up",
+      "position": {
+        "x": 565,
+        "y": 1280
+      },
+      "config": {
+        "instructions": "The refund was approved but the payment system did not confirm it. Check before trying again, so the customer is not paid twice."
+      }
+    },
+    {
+      "id": "end-needs-followup",
+      "type": "END",
+      "name": "Needs Payments Follow-up",
+      "position": {
+        "x": 450,
+        "y": 1430
+      },
+      "config": {}
+    },
+    {
+      "id": "end-other",
+      "type": "END",
+      "name": "Passed to Support",
+      "position": {
+        "x": 565,
+        "y": 830
+      },
+      "config": {}
+    },
+    {
+      "id": "fetch-order-ok",
+      "type": "CONDITION",
+      "name": "Order found?",
+      "position": {
+        "x": 450,
+        "y": 380
+      },
+      "config": {
+        "expression": "output.ok"
+      }
+    },
+    {
+      "id": "issue-refund-ok",
+      "type": "CONDITION",
+      "name": "Refund confirmed?",
+      "position": {
+        "x": 450,
+        "y": 1130
+      },
+      "config": {
+        "expression": "output.ok"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "start",
+      "target": "fetch-order"
+    },
+    {
+      "source": "classify-request",
+      "target": "route"
+    },
+    {
+      "source": "route",
+      "target": "refund-approval",
+      "condition": "refund"
+    },
+    {
+      "source": "route",
+      "target": "end-other",
+      "condition": "other"
+    },
+    {
+      "source": "refund-approval",
+      "target": "issue-refund"
+    },
+    {
+      "source": "fetch-order",
+      "target": "fetch-order-ok"
+    },
+    {
+      "source": "fetch-order-ok",
+      "target": "classify-request",
+      "condition": "true"
+    },
+    {
+      "source": "fetch-order-ok",
+      "target": "end-order-not-found",
+      "condition": "false"
+    },
+    {
+      "source": "issue-refund",
+      "target": "issue-refund-ok"
+    },
+    {
+      "source": "issue-refund-ok",
+      "target": "end-refunded",
+      "condition": "true"
+    },
+    {
+      "source": "issue-refund-ok",
+      "target": "hitl-payments",
+      "condition": "false"
+    },
+    {
+      "source": "hitl-payments",
+      "target": "end-needs-followup"
+    }
+  ],
+  "metadata": {
+    "difficulty": "medium",
+    "industry": "E-commerce / Payments",
+    "tags": [
+      "refund",
+      "approval",
+      "api",
+      "hitl",
+      "safe-by-design"
+    ],
+    "sample_input": {
+      "order_id": "ord_1042",
+      "message": "The blender arrived broken. I would like my money back, please."
+    }
+  }
+}

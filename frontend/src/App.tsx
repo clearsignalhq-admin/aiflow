@@ -101,7 +101,10 @@ export default function WorkflowApp() {
   useLayoutEffect(() => { workflowRef.current = workflow; });
 
   const [isDirty, setIsDirty] = useState(false);
-  const isFirstWorkflowRender = useRef(true);
+  // What the workflow looked like when it was last loaded or saved. "Unsaved" means "differs from this", so an update that
+  // changes nothing (or an undo back to the saved state) is not an edit, and React's double-run of effects in development
+  // cannot make a fresh editor look unsaved.
+  const cleanSnapshot = useRef<string | null>(null);
   const cleanLoadRef = useRef(false);
   const [cloudId, setCloudId] = useState<string | null>(null);
   const clipboardRef = useRef<WorkflowNode | null>(null);
@@ -128,10 +131,21 @@ export default function WorkflowApp() {
   }, [undo, redo]);
 
   useEffect(() => {
-    if (isFirstWorkflowRender.current) { isFirstWorkflowRender.current = false; return; }
-    if (cleanLoadRef.current) { cleanLoadRef.current = false; setIsDirty(false); return; }
-    setIsDirty(true);
+    const now = serializeWorkflow(workflow);
+    if (cleanSnapshot.current === null || cleanLoadRef.current) {
+      cleanLoadRef.current = false;
+      cleanSnapshot.current = now;
+      setIsDirty(false);
+      return;
+    }
+    setIsDirty(now !== cleanSnapshot.current);
   }, [workflow]);
+
+  /** The workflow on screen has just been saved (to a file or the cloud). */
+  const markClean = useCallback(() => {
+    cleanSnapshot.current = serializeWorkflow(workflowRef.current);
+    setIsDirty(false);
+  }, []);
 
   useEffect(() => {
     if (!isDirty) return;
@@ -250,9 +264,9 @@ export default function WorkflowApp() {
     a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
-    setIsDirty(false);
+    markClean();
     flash(`Saved as ${filename}`);
-  }, [flash]);
+  }, [flash, markClean]);
 
   const handleOpen = useCallback(() => fileInputRef.current?.click(), []);
 
@@ -691,7 +705,7 @@ export default function WorkflowApp() {
           workflow={workflow}
           cloudId={cloudId}
           onOpen={handleCloudOpen}
-          onCloudIdChange={(id) => { setCloudId(id); if (id) setIsDirty(false); }}
+          onCloudIdChange={(id) => { setCloudId(id); if (id) markClean(); }}
           onClose={() => setShowCloud(false)}
         />
       )}

@@ -1,5 +1,19 @@
 # AiFlow — Current Iteration
 
+## Iteration 20 — Example Workflows
+
+#### Task 67 — Fix and Extend the Examples `[x]`
+
+- [x] Audit of all ten examples with the product's own tools (validate, design checks, safety checks, failure drill, simulation on six seeds, export of all three code targets)
+- [x] Nine examples hardened: every outside step checked, failures end cleanly or go to a person, realistic output contracts, a person reviews what a model wrote before it changes anything; Supply Chain Monitor kept as the deliberate teaching example and labelled
+- [x] Two new examples: Refund Request Handler (safe approval-before-payment pattern) and Meeting Notes to Action Items (model, transform, tool)
+- [x] Stale duplicate `examples/customer-support.json` removed; `examples/README.md` added
+- [x] Picker reads difficulty, industry, tags and step count from the files; catalog in its own module; tiers describe the kind of workflow
+- [x] Found and fixed while doing this: the failure-branch fix produced a new finding (a review on a failure branch was flagged as approval after a write); the editor treated no-op canvas updates as edits (phantom undo step, fresh editor looked unsaved, spurious "discard?" prompt)
+- [x] Tests: 160 for the examples (valid, clean, safe, exportable, no secrets, layout), 7 for the picker, 3 for history, 14 for the design-check change
+
+---
+
 ## Iteration 19 — Closing the Backlog
 
 #### Task 66 — Backlog Follow-ups `[x]`

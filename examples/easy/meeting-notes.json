@@ -1,0 +1,178 @@
+{
+  "version": "1.0",
+  "id": "easy-meeting-notes",
+  "name": "Meeting Notes to Action Items",
+  "description": "Turns a meeting transcript into a checklist of action items and posts it to the team chat. Shows a model step, a transform and a tool in one short flow, with the posting step checked so a failure is reported instead of silently lost.",
+  "nodes": [
+    {
+      "id": "start",
+      "type": "START",
+      "name": "Start",
+      "position": {
+        "x": 450,
+        "y": 80
+      },
+      "config": {}
+    },
+    {
+      "id": "extract-actions",
+      "type": "LLM",
+      "name": "Extract Action Items",
+      "position": {
+        "x": 450,
+        "y": 230
+      },
+      "config": {
+        "model": "gpt-4o-mini",
+        "temperature": 0,
+        "prompt": "Read the meeting transcript and list every action item as an owner, a task and (if mentioned) a due date. Do not invent items. Transcript: {{input.transcript}}"
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "properties": {
+                "owner": {
+                  "type": "string"
+                },
+                "task": {
+                  "type": "string"
+                },
+                "due": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "owner",
+                "task"
+              ]
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      }
+    },
+    {
+      "id": "format-checklist",
+      "type": "TRANSFORM",
+      "name": "Format as Checklist",
+      "position": {
+        "x": 450,
+        "y": 380
+      },
+      "config": {
+        "description": "Turn the list of items into a short checklist, one line per item: owner, task, due date."
+      }
+    },
+    {
+      "id": "post-to-chat",
+      "type": "TOOL",
+      "name": "Post to Team Chat",
+      "position": {
+        "x": 450,
+        "y": 530
+      },
+      "config": {
+        "name": "post_message",
+        "description": "Posts a message to the team's chat channel."
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "message_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ok"
+        ]
+      }
+    },
+    {
+      "id": "end-posted",
+      "type": "END",
+      "name": "Checklist Posted",
+      "position": {
+        "x": 335,
+        "y": 830
+      },
+      "config": {}
+    },
+    {
+      "id": "end-not-posted",
+      "type": "END",
+      "name": "Could Not Post",
+      "position": {
+        "x": 565,
+        "y": 830
+      },
+      "config": {}
+    },
+    {
+      "id": "post-to-chat-ok",
+      "type": "CONDITION",
+      "name": "Posted?",
+      "position": {
+        "x": 450,
+        "y": 680
+      },
+      "config": {
+        "expression": "output.ok"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "start",
+      "target": "extract-actions"
+    },
+    {
+      "source": "extract-actions",
+      "target": "format-checklist"
+    },
+    {
+      "source": "format-checklist",
+      "target": "post-to-chat"
+    },
+    {
+      "source": "post-to-chat",
+      "target": "post-to-chat-ok"
+    },
+    {
+      "source": "post-to-chat-ok",
+      "target": "end-posted",
+      "condition": "true"
+    },
+    {
+      "source": "post-to-chat-ok",
+      "target": "end-not-posted",
+      "condition": "false"
+    }
+  ],
+  "metadata": {
+    "difficulty": "easy",
+    "industry": "Productivity",
+    "tags": [
+      "meetings",
+      "llm",
+      "transform",
+      "tool",
+      "failure-handling"
+    ],
+    "sample_input": {
+      "transcript": "Dana: Let's ship the pricing page by Friday. Lee: I'll draft the copy today. Dana: And someone should tell finance about the new plans. Lee: I'll do that Monday."
+    }
+  }
+}

@@ -2,38 +2,86 @@
   "version": "1.0",
   "id": "medium-invoice-processing",
   "name": "Invoice Processing & Approval",
-  "description": "Fetches an invoice, normalises its fields, checks if the amount requires manager approval, records the result in the ERP database.",
+  "description": "Fetches an invoice, normalises its fields, checks whether the amount needs manager approval, and records the result in the ERP. A missing invoice ends the run; a failed ERP write goes to finance instead of being lost.",
   "nodes": [
     {
       "id": "start",
       "type": "START",
       "name": "Start",
-      "position": { "x": 400, "y": 80 },
+      "position": {
+        "x": 450,
+        "y": 80
+      },
       "config": {}
     },
     {
       "id": "fetch-invoice",
       "type": "API",
       "name": "Fetch Invoice",
-      "position": { "x": 400, "y": 240 },
+      "position": {
+        "x": 450,
+        "y": 230
+      },
       "config": {
         "method": "GET",
         "url": "https://api.internal/invoices/{{input.invoice_id}}",
-        "headers": { "Authorization": "Bearer env:INTERNAL_API_TOKEN" }
+        "headers": {
+          "Authorization": "Bearer env:INTERNAL_API_TOKEN"
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "vendor": {
+            "type": "string"
+          },
+          "amount_usd": {
+            "type": "number",
+            "minimum": 1
+          },
+          "invoice_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ok",
+          "amount_usd"
+        ]
       }
     },
     {
       "id": "normalise",
       "type": "TRANSFORM",
-      "output_schema": {"type": "object", "properties": {"amount_usd": {"type": "number", "minimum": 100, "maximum": 20000}}, "required": ["amount_usd"]},
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "amount_usd": {
+            "type": "number",
+            "minimum": 100,
+            "maximum": 20000
+          }
+        },
+        "required": [
+          "amount_usd"
+        ]
+      },
       "name": "Normalise Invoice",
-      "position": { "x": 400, "y": 400 },
+      "position": {
+        "x": 335,
+        "y": 530
+      },
       "config": {
         "mapping": {
-          "vendor":      "supplier.name",
-          "amount_usd":  "totals.amount_cents / 100",
-          "due_date":    "payment.due_at",
-          "line_items":  "line_items"
+          "vendor": "supplier.name",
+          "amount_usd": "totals.amount_cents / 100",
+          "due_date": "payment.due_at",
+          "line_items": "line_items"
         }
       }
     },
@@ -41,7 +89,10 @@
       "id": "approval-check",
       "type": "CONDITION",
       "name": "Approval Required?",
-      "position": { "x": 400, "y": 560 },
+      "position": {
+        "x": 450,
+        "y": 680
+      },
       "config": {
         "expression": "\"needs-approval\" if input.amount_usd > 5000 else \"auto-approve\""
       }
@@ -50,7 +101,10 @@
       "id": "manager-approval",
       "type": "HITL",
       "name": "Manager Approval",
-      "position": { "x": 620, "y": 720 },
+      "position": {
+        "x": 450,
+        "y": 830
+      },
       "config": {
         "instructions": "Review this invoice for accuracy and authorise payment. Check vendor name, total amount, and line items against the purchase order. Approve or reject with a brief reason."
       }
@@ -59,35 +113,173 @@
       "id": "record-invoice",
       "type": "DATABASE",
       "name": "Record in ERP",
-      "position": { "x": 400, "y": 880 },
+      "position": {
+        "x": 450,
+        "y": 980
+      },
       "config": {
         "query": "INSERT INTO invoices (vendor, amount_usd, due_date, status, approved_by) VALUES (:vendor, :amount_usd, :due_date, :status, :approved_by)",
         "operation": "insert",
         "table": "invoices",
-        "fields": ["vendor", "amount_usd", "due_date", "status", "approved_by"]
+        "fields": [
+          "vendor",
+          "amount_usd",
+          "due_date",
+          "status",
+          "approved_by"
+        ]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "erp_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ok"
+        ]
       }
     },
     {
       "id": "end",
       "type": "END",
       "name": "End",
-      "position": { "x": 400, "y": 1040 },
+      "position": {
+        "x": 335,
+        "y": 1280
+      },
       "config": {}
+    },
+    {
+      "id": "end-not-found",
+      "type": "END",
+      "name": "Invoice Not Found",
+      "position": {
+        "x": 565,
+        "y": 530
+      },
+      "config": {}
+    },
+    {
+      "id": "hitl-finance-followup",
+      "type": "HITL",
+      "name": "Finance Follow-up",
+      "position": {
+        "x": 565,
+        "y": 1280
+      },
+      "config": {
+        "instructions": "The invoice was approved but could not be recorded in the ERP. Record it manually or retry, then confirm."
+      }
+    },
+    {
+      "id": "end-followup",
+      "type": "END",
+      "name": "Needs Finance Follow-up",
+      "position": {
+        "x": 450,
+        "y": 1430
+      },
+      "config": {}
+    },
+    {
+      "id": "fetch-invoice-ok",
+      "type": "CONDITION",
+      "name": "Invoice found?",
+      "position": {
+        "x": 450,
+        "y": 380
+      },
+      "config": {
+        "expression": "output.ok"
+      }
+    },
+    {
+      "id": "record-invoice-ok",
+      "type": "CONDITION",
+      "name": "Recorded in ERP?",
+      "position": {
+        "x": 450,
+        "y": 1130
+      },
+      "config": {
+        "expression": "output.ok"
+      }
     }
   ],
   "edges": [
-    { "source": "start",            "target": "fetch-invoice" },
-    { "source": "fetch-invoice",    "target": "normalise" },
-    { "source": "normalise",        "target": "approval-check" },
-    { "source": "approval-check",   "target": "record-invoice",   "condition": "auto-approve" },
-    { "source": "approval-check",   "target": "manager-approval", "condition": "needs-approval" },
-    { "source": "manager-approval", "target": "record-invoice" },
-    { "source": "record-invoice",   "target": "end" }
+    {
+      "source": "start",
+      "target": "fetch-invoice"
+    },
+    {
+      "source": "normalise",
+      "target": "approval-check"
+    },
+    {
+      "source": "approval-check",
+      "target": "record-invoice",
+      "condition": "auto-approve"
+    },
+    {
+      "source": "approval-check",
+      "target": "manager-approval",
+      "condition": "needs-approval"
+    },
+    {
+      "source": "manager-approval",
+      "target": "record-invoice"
+    },
+    {
+      "source": "fetch-invoice",
+      "target": "fetch-invoice-ok"
+    },
+    {
+      "source": "fetch-invoice-ok",
+      "target": "normalise",
+      "condition": "true"
+    },
+    {
+      "source": "fetch-invoice-ok",
+      "target": "end-not-found",
+      "condition": "false"
+    },
+    {
+      "source": "record-invoice",
+      "target": "record-invoice-ok"
+    },
+    {
+      "source": "record-invoice-ok",
+      "target": "end",
+      "condition": "true"
+    },
+    {
+      "source": "record-invoice-ok",
+      "target": "hitl-finance-followup",
+      "condition": "false"
+    },
+    {
+      "source": "hitl-finance-followup",
+      "target": "end-followup"
+    }
   ],
   "metadata": {
     "difficulty": "medium",
     "industry": "Finance / Operations",
-    "tags": ["invoice", "approval", "database", "hitl"],
+    "tags": [
+      "invoice",
+      "approval",
+      "database",
+      "hitl",
+      "failure-handling"
+    ],
     "sample_input": {
       "invoice_id": "INV-2024-0042"
     }

@@ -2,6 +2,32 @@
 
 AiFlow follows `MAJOR.MINOR.PATCH`. While the product is in private beta the major number stays at 0: a new feature raises MINOR, a fix raises PATCH. The newest entry is first and must match the `VERSION` file (a test checks this).
 
+## 0.12.0 — 2026-11-24
+
+**New**
+- Two new examples: **Refund Request Handler** (the safe pattern: a person approves before any money moves) and **Meeting Notes to Action Items** (model, transform and tool in one short flow). There are now twelve.
+- `examples/README.md` describes every example and the conventions they follow.
+
+**Improved**
+- The examples now follow the standard the product teaches: every outside step is checked and a failure ends the run cleanly or goes to a person, steps declare the fields later steps read, and every message a model writes is reviewed by a person before it goes out. **Supply Chain Monitor** is kept as it was on purpose, labelled as the one to try the checks on.
+- The example picker reads each example's difficulty, industry, tags and step count from the example file, so they can no longer drift, and its tiers describe the kind of workflow instead of a step count. A test fails if an example file is not listed.
+- A test suite for the examples (160 checks) keeps them valid, clean, safe and exportable.
+
+**Fixed**
+- A suggested "failure branch" fix added a human review after a write, and the design check then flagged that review as "approval after an irreversible step". A review reached only through a failure branch (false, no, error, failed) is now understood to be handling the failure. Applying every suggested fix to any example now leaves no findings.
+- Removed a stale duplicate of the customer-support example that the picker never showed.
+- A fresh editor could look "unsaved" and ask "Discard unsaved changes?" before you had done anything: the canvas reports every step's position when it first lays out, and that was treated as an edit (and recorded as an undo step). Updates that change nothing are now ignored, and "unsaved" now means "differs from the last loaded or saved version", so undoing back to the saved state clears it.
+
+## 0.11.1 — 2026-11-24
+
+**Fixed**
+- The user guide could not be scrolled. The editor locks the page so it can fill the window, and the guide page did not scroll inside its own container.
+- The same problem on the sign-in, request-access, password and pending pages: in a short window (a small laptop, or a phone with the keyboard open) the form could be cut off with no way to reach the rest. These pages now scroll, and stay centred when they fit.
+
+**Added**
+- A test that guards this whole class of bug (full-page screens must scroll in their own container), since component tests cannot see layout.
+- The deployment guide (`docs/deploy.md`) now leads with the release routine (`bump_version.py`, `deploy.py`) and keeps the manual steps as the explanation and fallback.
+
 ## 0.11.0 — 2026-11-24
 
 **New**

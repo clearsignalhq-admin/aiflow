@@ -1976,10 +1976,13 @@ body {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* The page itself never scrolls, so a form taller than the window (a short laptop, a phone with the keyboard open)
+   scrolls inside this container. `margin: auto` on the card centres it without clipping the top when it overflows. */
 .auth-page {
-  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  height: 100vh; overflow-y: auto; display: flex;
   background: var(--bg-body); padding: 24px;
 }
+.auth-page > .auth-card { margin: auto; }
 
 .auth-card {
   width: 100%; max-width: 420px;
@@ -2824,7 +2827,8 @@ body {
 .change-card-details > summary:hover { color: var(--text); }
 
 /* ── User guide ────────────────────────────────────────────────────── */
-.guide-page { min-height: 100vh; background: var(--bg-body); color: var(--text); }
+/* The page itself never scrolls (the editor fills the window), so this page scrolls inside its own container. */
+.guide-page { height: 100vh; overflow-y: auto; background: var(--bg-body); color: var(--text); }
 .guide-header { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 12px; padding: 10px 20px; background: var(--bg-surface); border-bottom: 1px solid var(--border); }
 .guide-header-links { margin-left: auto; }
 .guide-body { display: flex; gap: 32px; max-width: 1180px; margin: 0 auto; padding: 24px 20px 64px; align-items: flex-start; }

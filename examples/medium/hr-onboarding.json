@@ -2,42 +2,95 @@
   "version": "1.0",
   "id": "medium-hr-onboarding",
   "name": "HR Employee Onboarding",
-  "description": "Fetches a new employee's profile, generates a personalised 30-60-90 day onboarding plan, gets manager sign-off, provisions system accounts, and logs the completed onboarding.",
+  "description": "Fetches a new employee's profile, drafts a 30-60-90 day plan, gets the manager's sign-off, then provisions accounts and logs the onboarding. Accounts are only created after a person approves, and any failure after that goes to IT instead of leaving a half-finished onboarding.",
   "nodes": [
     {
       "id": "start",
       "type": "START",
       "name": "Start",
-      "position": { "x": 350, "y": 80 },
+      "position": {
+        "x": 450,
+        "y": 80
+      },
       "config": {}
     },
     {
       "id": "fetch-employee",
       "type": "API",
       "name": "Fetch Employee Profile",
-      "position": { "x": 350, "y": 240 },
+      "position": {
+        "x": 450,
+        "y": 230
+      },
       "config": {
         "method": "GET",
         "url": "https://api.internal/employees/{{input.employee_id}}",
-        "headers": { "Authorization": "Bearer env:HR_API_TOKEN" }
+        "headers": {
+          "Authorization": "Bearer env:HR_API_TOKEN"
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "department": {
+            "type": "string"
+          },
+          "start_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ok",
+          "role",
+          "department"
+        ]
       }
     },
     {
       "id": "generate-plan",
       "type": "LLM",
       "name": "Generate Onboarding Plan",
-      "position": { "x": 350, "y": 400 },
+      "position": {
+        "x": 335,
+        "y": 530
+      },
       "config": {
         "model": "gpt-4o-mini",
         "prompt": "Create a personalised 30-60-90 day onboarding plan for this new employee. Include key stakeholders to meet, systems to learn, and measurable goals for each phase. Employee profile: {{fetch_employee}}",
         "temperature": 0.5
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "plan": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan"
+        ]
       }
     },
     {
       "id": "manager-approval",
       "type": "HITL",
       "name": "Manager Sign-off",
-      "position": { "x": 350, "y": 560 },
+      "position": {
+        "x": 450,
+        "y": 680
+      },
       "config": {
         "instructions": "Review the AI-generated onboarding plan for your new team member. Approve as-is or provide amendments before account provisioning begins."
       }
@@ -46,49 +99,225 @@
       "id": "provision-accounts",
       "type": "API",
       "name": "Provision Accounts",
-      "position": { "x": 350, "y": 720 },
+      "position": {
+        "x": 450,
+        "y": 830
+      },
       "config": {
         "method": "POST",
         "url": "https://api.internal/provisioning/accounts",
         "body": {
           "employee_id": "{{input.employee_id}}",
-          "role":        "{{fetch_employee.role}}",
-          "department":  "{{fetch_employee.department}}"
+          "role": "{{fetch_employee.role}}",
+          "department": "{{fetch_employee.department}}"
         }
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "accounts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          }
+        },
+        "required": [
+          "ok"
+        ]
       }
     },
     {
       "id": "log-onboarding",
       "type": "DATABASE",
       "name": "Log Onboarding Record",
-      "position": { "x": 350, "y": 880 },
+      "position": {
+        "x": 450,
+        "y": 1130
+      },
       "config": {
         "query": "INSERT INTO onboarding_records (employee_id, start_date, plan, manager_approved, accounts_provisioned) VALUES (:employee_id, :start_date, :plan, :manager_approved, :accounts_provisioned)",
         "operation": "insert",
         "table": "onboarding_records",
-        "fields": ["employee_id", "start_date", "plan", "manager_approved", "accounts_provisioned"]
+        "fields": [
+          "employee_id",
+          "start_date",
+          "plan",
+          "manager_approved",
+          "accounts_provisioned"
+        ]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          }
+        },
+        "required": [
+          "ok"
+        ]
       }
     },
     {
       "id": "end",
       "type": "END",
       "name": "End",
-      "position": { "x": 350, "y": 1040 },
+      "position": {
+        "x": 335,
+        "y": 1430
+      },
       "config": {}
+    },
+    {
+      "id": "end-not-found",
+      "type": "END",
+      "name": "Employee Not Found",
+      "position": {
+        "x": 565,
+        "y": 530
+      },
+      "config": {}
+    },
+    {
+      "id": "hitl-it-followup",
+      "type": "HITL",
+      "name": "IT Follow-up",
+      "position": {
+        "x": 565,
+        "y": 1430
+      },
+      "config": {
+        "instructions": "Account provisioning or the onboarding record failed. Complete the missing step by hand and confirm when done."
+      }
+    },
+    {
+      "id": "end-followup",
+      "type": "END",
+      "name": "Needs IT Follow-up",
+      "position": {
+        "x": 450,
+        "y": 1580
+      },
+      "config": {}
+    },
+    {
+      "id": "fetch-employee-ok",
+      "type": "CONDITION",
+      "name": "Employee found?",
+      "position": {
+        "x": 450,
+        "y": 380
+      },
+      "config": {
+        "expression": "output.ok"
+      }
+    },
+    {
+      "id": "provision-accounts-ok",
+      "type": "CONDITION",
+      "name": "Accounts provisioned?",
+      "position": {
+        "x": 450,
+        "y": 980
+      },
+      "config": {
+        "expression": "output.ok"
+      }
+    },
+    {
+      "id": "log-onboarding-ok",
+      "type": "CONDITION",
+      "name": "Record saved?",
+      "position": {
+        "x": 450,
+        "y": 1280
+      },
+      "config": {
+        "expression": "output.ok"
+      }
     }
   ],
   "edges": [
-    { "source": "start",             "target": "fetch-employee" },
-    { "source": "fetch-employee",    "target": "generate-plan" },
-    { "source": "generate-plan",     "target": "manager-approval" },
-    { "source": "manager-approval",  "target": "provision-accounts" },
-    { "source": "provision-accounts","target": "log-onboarding" },
-    { "source": "log-onboarding",    "target": "end" }
+    {
+      "source": "start",
+      "target": "fetch-employee"
+    },
+    {
+      "source": "generate-plan",
+      "target": "manager-approval"
+    },
+    {
+      "source": "manager-approval",
+      "target": "provision-accounts"
+    },
+    {
+      "source": "fetch-employee",
+      "target": "fetch-employee-ok"
+    },
+    {
+      "source": "fetch-employee-ok",
+      "target": "generate-plan",
+      "condition": "true"
+    },
+    {
+      "source": "fetch-employee-ok",
+      "target": "end-not-found",
+      "condition": "false"
+    },
+    {
+      "source": "provision-accounts",
+      "target": "provision-accounts-ok"
+    },
+    {
+      "source": "provision-accounts-ok",
+      "target": "log-onboarding",
+      "condition": "true"
+    },
+    {
+      "source": "provision-accounts-ok",
+      "target": "hitl-it-followup",
+      "condition": "false"
+    },
+    {
+      "source": "log-onboarding",
+      "target": "log-onboarding-ok"
+    },
+    {
+      "source": "log-onboarding-ok",
+      "target": "end",
+      "condition": "true"
+    },
+    {
+      "source": "log-onboarding-ok",
+      "target": "hitl-it-followup",
+      "condition": "false"
+    },
+    {
+      "source": "hitl-it-followup",
+      "target": "end-followup"
+    }
   ],
   "metadata": {
     "difficulty": "medium",
     "industry": "Human Resources",
-    "tags": ["hr", "onboarding", "hitl", "database"],
+    "tags": [
+      "hr",
+      "onboarding",
+      "hitl",
+      "database",
+      "failure-handling"
+    ],
     "sample_input": {
       "employee_id": "emp_456"
     }

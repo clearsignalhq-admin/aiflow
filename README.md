@@ -18,7 +18,7 @@ AiFlow is a visual node-based editor for designing AI agent workflows. Developer
 - **Validate** the workflow for structural correctness
 - **Simulate** — run a mock execution and inspect each step's input/output in a trace panel
 - **Save/Export** as clean, versioned JSON — or **Import** previously saved workflows
-- **Browse examples** — 10 categorised workflows across Easy / Medium / Complex difficulties
+- **Browse examples** — 12 categorised workflows across Easy / Medium / Complex difficulties
 
 ### Node Types
 
@@ -125,12 +125,12 @@ Open **http://localhost:5173**.
 ## Running Tests
 
 ```bash
-# Backend (800 tests)
+# Backend (980 tests)
 cd backend
 .venv/Scripts/pytest -v       # Windows
 pytest -v                     # macOS / Linux
 
-# Frontend unit tests (508 tests)
+# Frontend unit tests (524 tests)
 cd frontend
 npm test
 
@@ -147,13 +147,15 @@ npx playwright test
 Click **New** → canvas resets to `START → END`.
 
 ### Browse Examples
-Click **Examples** → an example picker opens with 10 pre-built, simulation-ready workflows:
+Click **Examples** → an example picker opens with 12 pre-built, simulation-ready workflows:
 
-| Difficulty | Nodes | Workflows |
-|------------|-------|-----------|
-| Easy | 2–5 | Email auto-reply, Sentiment classifier, Data enrichment |
-| Medium | 6–10 | Customer support, Content moderation, Invoice processing, HR onboarding |
-| Complex | 11+ | AI research agent, Supply chain monitor, Multi-tier customer journey |
+| Difficulty | Workflows |
+|------------|-----------|
+| Easy | Email auto-reply, Sentiment classifier, Data enrichment, Meeting notes to action items |
+| Medium | Customer support, Content moderation, Invoice processing, HR onboarding, Refund request handler |
+| Complex | AI research agent, Supply chain monitor, Multi-tier customer journey |
+
+Most examples model good practice: outside steps are checked, failures are handled, and a person reviews what a model wrote before anything changes. **Supply chain monitor** is the exception on purpose, left with design findings so you can try Validate, Suggest changes and Safety checks on it. Each example is described in [examples/README.md](examples/README.md), and `backend/tests/test_examples.py` keeps them valid, clean and exportable.
 
 Search by name, industry, or tag. Click any card to load the workflow onto the canvas. Every example ships with a pre-populated **sample input**, so you can click **Simulate → Run Simulation** immediately without typing anything.
 
@@ -280,7 +282,7 @@ A step-by-step guide with screenshots lives in `docs/user-guide/README.md`. The 
 
 The product version lives in one file, `VERSION`. To cut a release: run `python scripts/bump_version.py patch|minor|major` (it bumps `VERSION`, adds a changelog entry to fill in, and copies the number into `backend/app/version.py` and `frontend/package.json`), write the entry, run the tests, commit, `git tag vX.Y.Z`, and deploy with `python scripts/deploy.py` (it builds, adds `GitCommit=<sha>` to the parameters already in `samconfig.toml`, deploys, and refuses to run with uncommitted changes; `--dry-run` prints the commands). `python scripts/sync_version.py` alone re-copies the number; `--check` is what the tests run. A test fails if any copy disagrees or the changelog does not lead with the current version. Numbering is `MAJOR.MINOR.PATCH`; while in private beta the major stays 0, a feature raises MINOR and a fix raises PATCH.
 
-**Help → About AiFlow** shows the version, the commit and build date of the page, the version and commit of the server (from `GET /api/health`), the changelog, and a **Copy version info** button for bug reports. If the page and the server differ in MAJOR or MINOR (typically a stale cached page after a deploy), a banner offers a reload; a different PATCH is treated as compatible. The server's commit is stamped by `scripts/deploy.py`; a plain `sam deploy` leaves it as `unknown`. The page's commit comes from Amplify (or git, locally) at build time.
+**Help → About AiFlow** shows the version, the commit and build date of the page, the version and commit of the server (from `GET /api/health`), the changelog, and a **Copy version info** button for bug reports. If the page and the server differ in MAJOR or MINOR (typically a stale cached page after a deploy), a banner offers a reload; a different PATCH is treated as compatible. The server's commit is stamped by `scripts/deploy.py`; a plain `sam deploy` leaves it as `unknown`. The full routine, with the manual fallback, is in [docs/deploy.md](docs/deploy.md). The page's commit comes from Amplify (or git, locally) at build time.
 
 #### The top bar
 

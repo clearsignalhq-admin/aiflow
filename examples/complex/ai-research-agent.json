@@ -2,31 +2,55 @@
   "version": "1.0",
   "id": "complex-ai-research-agent",
   "name": "AI Research Agent",
-  "description": "Defines research questions, retrieves from a knowledge base, runs a web search, merges and synthesises findings, checks confidence, and routes to expert review before formatting the final report.",
+  "description": "Defines research questions, retrieves from a knowledge base, runs a web search, merges and synthesises findings, checks confidence, and routes to expert review before formatting the final report. If the web search fails, the report carries on from the knowledge base and says so.",
   "nodes": [
     {
       "id": "start",
       "type": "START",
       "name": "Start",
-      "position": { "x": 400, "y": 80 },
+      "position": {
+        "x": 450,
+        "y": 80
+      },
       "config": {}
     },
     {
       "id": "define-questions",
       "type": "LLM",
       "name": "Define Research Questions",
-      "position": { "x": 400, "y": 240 },
+      "position": {
+        "x": 450,
+        "y": 230
+      },
       "config": {
         "model": "gpt-4o",
         "prompt": "Given the research topic below, generate 3–5 specific, answerable research questions that will guide the investigation. Return JSON: {\"questions\": string[]}. Topic: {{input.topic}}",
         "temperature": 0.4
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "questions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 3
+          }
+        },
+        "required": [
+          "questions"
+        ]
       }
     },
     {
       "id": "retrieve-knowledge",
       "type": "RAG",
       "name": "Retrieve Knowledge Base",
-      "position": { "x": 400, "y": 400 },
+      "position": {
+        "x": 450,
+        "y": 380
+      },
       "config": {
         "knowledgeBase": "research-library",
         "topK": 8,
@@ -37,32 +61,73 @@
       "id": "web-search",
       "type": "TOOL",
       "name": "Web Search",
-      "position": { "x": 400, "y": 560 },
+      "position": {
+        "x": 450,
+        "y": 530
+      },
       "config": {
         "tool": "web_search",
         "query": "{{define_questions.questions}}",
         "maxResults": 10
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "ok"
+        ]
       }
     },
     {
       "id": "merge-sources",
       "type": "TRANSFORM",
       "name": "Merge Sources",
-      "position": { "x": 400, "y": 720 },
+      "position": {
+        "x": 450,
+        "y": 980
+      },
       "config": {
         "mapping": {
           "knowledge_base_results": "retrieve_knowledge.documents",
-          "web_results":            "web_search.results",
-          "questions":              "define_questions.questions"
+          "web_results": "web_search.results",
+          "questions": "define_questions.questions"
         }
       }
     },
     {
       "id": "synthesize",
       "type": "LLM",
-      "output_schema": {"type": "object", "properties": {"overall_confidence": {"type": "number", "minimum": 0, "maximum": 1}}, "required": ["overall_confidence"]},
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "overall_confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "required": [
+          "overall_confidence"
+        ]
+      },
       "name": "Synthesise Findings",
-      "position": { "x": 400, "y": 880 },
+      "position": {
+        "x": 450,
+        "y": 1130
+      },
       "config": {
         "model": "gpt-4o",
         "prompt": "You are a research analyst. Synthesise the knowledge base excerpts and web search results into coherent answers for each research question. Assess your confidence (0–1) in each answer. Return JSON: {\"answers\": [{\"question\": string, \"answer\": string, \"confidence\": number}], \"overall_confidence\": number}",
@@ -73,7 +138,10 @@
       "id": "confidence-check",
       "type": "CONDITION",
       "name": "Confidence Sufficient?",
-      "position": { "x": 400, "y": 1040 },
+      "position": {
+        "x": 450,
+        "y": 1280
+      },
       "config": {
         "expression": "\"sufficient\" if input.overall_confidence >= 0.75 else \"insufficient\""
       }
@@ -82,7 +150,10 @@
       "id": "expert-review",
       "type": "HITL",
       "name": "Expert Review",
-      "position": { "x": 580, "y": 1200 },
+      "position": {
+        "x": 335,
+        "y": 1430
+      },
       "config": {
         "instructions": "Review the synthesised research findings. Verify accuracy, flag any unsupported claims, and approve or request revisions before the report is formatted."
       }
@@ -91,7 +162,10 @@
       "id": "format-report",
       "type": "TRANSFORM",
       "name": "Format Report",
-      "position": { "x": 580, "y": 1360 },
+      "position": {
+        "x": 335,
+        "y": 1580
+      },
       "config": {
         "template": "# Research Report: {{input.topic}}\n\n## Summary\n{{synthesize.summary}}\n\n## Findings\n{{synthesize.answers}}\n\n## Reviewer Notes\n{{expert_review.notes}}"
       }
@@ -100,14 +174,20 @@
       "id": "end-complete",
       "type": "END",
       "name": "Report Complete",
-      "position": { "x": 400, "y": 1520 },
+      "position": {
+        "x": 450,
+        "y": 1730
+      },
       "config": {}
     },
     {
       "id": "identify-gaps",
       "type": "LLM",
       "name": "Identify Knowledge Gaps",
-      "position": { "x": 200, "y": 1200 },
+      "position": {
+        "x": 565,
+        "y": 1430
+      },
       "config": {
         "model": "gpt-4o-mini",
         "prompt": "The research synthesis has low confidence ({{synthesize.overall_confidence}}). Identify the specific knowledge gaps and unanswered questions that prevented a confident answer. Return JSON: {\"gaps\": string[], \"recommended_sources\": string[]}",
@@ -118,27 +198,109 @@
       "id": "end-insufficient",
       "type": "END",
       "name": "Insufficient Data",
-      "position": { "x": 200, "y": 1360 },
+      "position": {
+        "x": 565,
+        "y": 1580
+      },
       "config": {}
+    },
+    {
+      "id": "note-no-web",
+      "type": "TRANSFORM",
+      "name": "Note Web Search Unavailable",
+      "position": {
+        "x": 450,
+        "y": 830
+      },
+      "config": {
+        "description": "Record that the web search failed, so the report states it relied on the knowledge base only."
+      }
+    },
+    {
+      "id": "web-search-ok",
+      "type": "CONDITION",
+      "name": "Web search succeeded?",
+      "position": {
+        "x": 450,
+        "y": 680
+      },
+      "config": {
+        "expression": "output.ok"
+      }
     }
   ],
   "edges": [
-    { "source": "start",             "target": "define-questions" },
-    { "source": "define-questions",  "target": "retrieve-knowledge" },
-    { "source": "retrieve-knowledge","target": "web-search" },
-    { "source": "web-search",        "target": "merge-sources" },
-    { "source": "merge-sources",     "target": "synthesize" },
-    { "source": "synthesize",        "target": "confidence-check" },
-    { "source": "confidence-check",  "target": "expert-review",    "condition": "sufficient" },
-    { "source": "confidence-check",  "target": "identify-gaps",    "condition": "insufficient" },
-    { "source": "expert-review",     "target": "format-report" },
-    { "source": "format-report",     "target": "end-complete" },
-    { "source": "identify-gaps",     "target": "end-insufficient" }
+    {
+      "source": "start",
+      "target": "define-questions"
+    },
+    {
+      "source": "define-questions",
+      "target": "retrieve-knowledge"
+    },
+    {
+      "source": "retrieve-knowledge",
+      "target": "web-search"
+    },
+    {
+      "source": "merge-sources",
+      "target": "synthesize"
+    },
+    {
+      "source": "synthesize",
+      "target": "confidence-check"
+    },
+    {
+      "source": "confidence-check",
+      "target": "expert-review",
+      "condition": "sufficient"
+    },
+    {
+      "source": "confidence-check",
+      "target": "identify-gaps",
+      "condition": "insufficient"
+    },
+    {
+      "source": "expert-review",
+      "target": "format-report"
+    },
+    {
+      "source": "format-report",
+      "target": "end-complete"
+    },
+    {
+      "source": "identify-gaps",
+      "target": "end-insufficient"
+    },
+    {
+      "source": "web-search",
+      "target": "web-search-ok"
+    },
+    {
+      "source": "web-search-ok",
+      "target": "merge-sources",
+      "condition": "true"
+    },
+    {
+      "source": "web-search-ok",
+      "target": "note-no-web",
+      "condition": "false"
+    },
+    {
+      "source": "note-no-web",
+      "target": "merge-sources"
+    }
   ],
   "metadata": {
     "difficulty": "complex",
     "industry": "Research & Analytics",
-    "tags": ["research", "rag", "tool", "hitl", "synthesis"],
+    "tags": [
+      "research",
+      "rag",
+      "tool",
+      "hitl",
+      "failure-handling"
+    ],
     "sample_input": {
       "topic": "Impact of large language models on software development productivity"
     }

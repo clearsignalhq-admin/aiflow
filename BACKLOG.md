@@ -661,6 +661,10 @@ Every task above is done or deliberately skipped. This section replaces the old 
 
 Done in this pass: save-state note beside the workflow name; pass-rate-over-time chart in the Tests dialog; save a copy of a shared workflow into your own account (the "fork" idea); recent actions first in the action search; "Read more in the user guide" links from the ⓘ dialogs; guide link and version on the landing page; `scripts/bump_version.py` and `scripts/deploy.py`.
 
+### Task 67 — Fix and Extend the Examples `[x]`
+
+Done: see the changelog entry for 0.12.0 and `examples/README.md`. **Considered, not planned:** shipping ready-made test suites with each example (the Tests dialog can already turn an example's sample input into a case); a "pattern" gallery separate from the examples; examples that need loops (cycles are not supported by the simulator).
+
 ### Needs you (only the account owner can do these)
 
 | Item | What to do |

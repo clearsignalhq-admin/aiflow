@@ -2,32 +2,89 @@
   "version": "1.0",
   "id": "complex-multi-agent-customer-journey",
   "name": "Multi-Tier Customer Journey",
-  "description": "Fetches a customer profile, determines their service tier, then branches into distinct premium or basic paths — each with tailored LLM personalisation, optional RAG catalogue lookup, HITL offer approval for premium, and API delivery.",
+  "description": "Fetches a customer profile, determines their service tier, then branches into distinct premium or basic paths — each with tailored LLM personalisation, optional RAG catalogue lookup, HITL offer approval for premium, and API delivery. Every message a model writes is checked by a person before it goes out, and a failed lookup or delivery is handled instead of stopping the flow.",
   "nodes": [
     {
       "id": "start",
       "type": "START",
       "name": "Start",
-      "position": { "x": 400, "y": 80 },
+      "position": {
+        "x": 450,
+        "y": 80
+      },
       "config": {}
     },
     {
       "id": "fetch-profile",
       "type": "API",
       "name": "Fetch Customer Profile",
-      "position": { "x": 400, "y": 240 },
+      "position": {
+        "x": 450,
+        "y": 230
+      },
       "config": {
         "method": "GET",
         "url": "https://api.internal/customers/{{input.customer_id}}",
-        "headers": { "Authorization": "Bearer env:CRM_API_TOKEN" }
+        "headers": {
+          "Authorization": "Bearer env:CRM_API_TOKEN"
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "lifetime_value": {
+            "type": "number",
+            "minimum": 0
+          },
+          "orders_90d": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "ok",
+          "customer_id"
+        ]
       }
     },
     {
       "id": "assess-tier",
       "type": "LLM",
-      "output_schema": {"type": "object", "properties": {"tier": {"type": "string", "enum": ["basic", "premium"]}}, "required": ["tier"]},
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "tier": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "premium"
+            ]
+          }
+        },
+        "required": [
+          "tier"
+        ]
+      },
       "name": "Assess Customer Tier",
-      "position": { "x": 400, "y": 400 },
+      "position": {
+        "x": 335,
+        "y": 530
+      },
       "config": {
         "model": "gpt-4o-mini",
         "prompt": "Review the customer profile and determine their service tier. Factors: lifetime_value, subscription_plan, tenure_months, support_history. Return JSON: {\"tier\": \"premium\" | \"basic\", \"tier_score\": number, \"rationale\": string}. Profile: {{fetch_profile}}",
@@ -38,7 +95,10 @@
       "id": "tier-route",
       "type": "CONDITION",
       "name": "Premium or Basic?",
-      "position": { "x": 400, "y": 560 },
+      "position": {
+        "x": 450,
+        "y": 680
+      },
       "config": {
         "expression": "\"premium\" if input.tier == \"premium\" else \"basic\""
       }
@@ -47,7 +107,10 @@
       "id": "rag-premium-catalog",
       "type": "RAG",
       "name": "Premium Catalogue Lookup",
-      "position": { "x": 200, "y": 720 },
+      "position": {
+        "x": 335,
+        "y": 830
+      },
       "config": {
         "knowledgeBase": "premium-products-catalog",
         "topK": 5,
@@ -58,7 +121,10 @@
       "id": "llm-premium-offer",
       "type": "LLM",
       "name": "Craft Premium Offer",
-      "position": { "x": 200, "y": 880 },
+      "position": {
+        "x": 335,
+        "y": 980
+      },
       "config": {
         "model": "gpt-4o",
         "prompt": "Create a highly personalised premium offer for this customer based on their profile and relevant catalogue items. Emphasise exclusivity, their specific needs, and tangible benefits. Return JSON: {\"subject\": string, \"body\": string, \"discount_pct\": number, \"recommended_products\": string[]}. Customer: {{fetch_profile}}. Catalogue: {{rag_premium_catalog.documents}}",
@@ -69,7 +135,10 @@
       "id": "hitl-offer-approval",
       "type": "HITL",
       "name": "Offer Approval",
-      "position": { "x": 200, "y": 1040 },
+      "position": {
+        "x": 335,
+        "y": 1130
+      },
       "config": {
         "instructions": "Review the AI-crafted premium offer before it is sent. Check that the discount is within policy (max 25%), the recommended products match the customer segment, and the tone is appropriate. Approve or revise."
       }
@@ -78,30 +147,56 @@
       "id": "api-send-premium",
       "type": "API",
       "name": "Send Premium Offer",
-      "position": { "x": 200, "y": 1200 },
+      "position": {
+        "x": 335,
+        "y": 1280
+      },
       "config": {
         "method": "POST",
         "url": "https://api.internal/communications/email",
         "body": {
-          "to":       "{{fetch_profile.email}}",
-          "subject":  "{{llm_premium_offer.subject}}",
-          "body":     "{{llm_premium_offer.body}}",
+          "to": "{{fetch_profile.email}}",
+          "subject": "{{llm_premium_offer.subject}}",
+          "body": "{{llm_premium_offer.body}}",
           "priority": "high"
         }
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "message_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ok"
+        ]
       }
     },
     {
       "id": "end-premium",
       "type": "END",
       "name": "Premium Journey Complete",
-      "position": { "x": 200, "y": 1360 },
+      "position": {
+        "x": 335,
+        "y": 1580
+      },
       "config": {}
     },
     {
       "id": "llm-basic-response",
       "type": "LLM",
       "name": "Generate Standard Response",
-      "position": { "x": 600, "y": 720 },
+      "position": {
+        "x": 565,
+        "y": 830
+      },
       "config": {
         "model": "gpt-4o-mini",
         "prompt": "Write a friendly, helpful standard response for this customer based on their request. Keep it concise and include relevant next steps or self-service links. Customer profile: {{fetch_profile}}. Request: {{input.request}}",
@@ -112,42 +207,224 @@
       "id": "api-send-basic",
       "type": "API",
       "name": "Send Standard Response",
-      "position": { "x": 600, "y": 880 },
+      "position": {
+        "x": 565,
+        "y": 1130
+      },
       "config": {
         "method": "POST",
         "url": "https://api.internal/communications/email",
         "body": {
-          "to":      "{{fetch_profile.email}}",
+          "to": "{{fetch_profile.email}}",
           "subject": "Re: Your Request",
-          "body":    "{{llm_basic_response.response}}"
+          "body": "{{llm_basic_response.response}}"
         }
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "message_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ok"
+        ]
       }
     },
     {
       "id": "end-basic",
       "type": "END",
       "name": "Basic Journey Complete",
-      "position": { "x": 600, "y": 1040 },
+      "position": {
+        "x": 565,
+        "y": 1430
+      },
       "config": {}
+    },
+    {
+      "id": "end-profile-unavailable",
+      "type": "END",
+      "name": "Profile Unavailable",
+      "position": {
+        "x": 565,
+        "y": 530
+      },
+      "config": {}
+    },
+    {
+      "id": "hitl-basic-check",
+      "type": "HITL",
+      "name": "Agent Spot-check",
+      "position": {
+        "x": 565,
+        "y": 980
+      },
+      "config": {
+        "instructions": "Check the standard reply before it is sent. In production this step can be set to auto-approve for low-risk tickets once you trust the model."
+      }
+    },
+    {
+      "id": "hitl-delivery-failed",
+      "type": "HITL",
+      "name": "Delivery Failed",
+      "position": {
+        "x": 565,
+        "y": 1580
+      },
+      "config": {
+        "instructions": "The message could not be sent to the customer. Decide whether to retry, send another way, or close the case."
+      }
+    },
+    {
+      "id": "end-delivery-failed",
+      "type": "END",
+      "name": "Needs Follow-up",
+      "position": {
+        "x": 450,
+        "y": 1730
+      },
+      "config": {}
+    },
+    {
+      "id": "fetch-profile-ok",
+      "type": "CONDITION",
+      "name": "Profile found?",
+      "position": {
+        "x": 450,
+        "y": 380
+      },
+      "config": {
+        "expression": "output.ok"
+      }
+    },
+    {
+      "id": "api-send-premium-ok",
+      "type": "CONDITION",
+      "name": "Premium offer sent?",
+      "position": {
+        "x": 335,
+        "y": 1430
+      },
+      "config": {
+        "expression": "output.ok"
+      }
+    },
+    {
+      "id": "api-send-basic-ok",
+      "type": "CONDITION",
+      "name": "Standard reply sent?",
+      "position": {
+        "x": 565,
+        "y": 1280
+      },
+      "config": {
+        "expression": "output.ok"
+      }
     }
   ],
   "edges": [
-    { "source": "start",               "target": "fetch-profile" },
-    { "source": "fetch-profile",        "target": "assess-tier" },
-    { "source": "assess-tier",          "target": "tier-route" },
-    { "source": "tier-route",           "target": "rag-premium-catalog", "condition": "premium" },
-    { "source": "tier-route",           "target": "llm-basic-response",  "condition": "basic" },
-    { "source": "rag-premium-catalog",  "target": "llm-premium-offer" },
-    { "source": "llm-premium-offer",    "target": "hitl-offer-approval" },
-    { "source": "hitl-offer-approval",  "target": "api-send-premium" },
-    { "source": "api-send-premium",     "target": "end-premium" },
-    { "source": "llm-basic-response",   "target": "api-send-basic" },
-    { "source": "api-send-basic",       "target": "end-basic" }
+    {
+      "source": "start",
+      "target": "fetch-profile"
+    },
+    {
+      "source": "assess-tier",
+      "target": "tier-route"
+    },
+    {
+      "source": "tier-route",
+      "target": "rag-premium-catalog",
+      "condition": "premium"
+    },
+    {
+      "source": "tier-route",
+      "target": "llm-basic-response",
+      "condition": "basic"
+    },
+    {
+      "source": "rag-premium-catalog",
+      "target": "llm-premium-offer"
+    },
+    {
+      "source": "llm-premium-offer",
+      "target": "hitl-offer-approval"
+    },
+    {
+      "source": "hitl-offer-approval",
+      "target": "api-send-premium"
+    },
+    {
+      "source": "llm-basic-response",
+      "target": "hitl-basic-check"
+    },
+    {
+      "source": "hitl-basic-check",
+      "target": "api-send-basic"
+    },
+    {
+      "source": "fetch-profile",
+      "target": "fetch-profile-ok"
+    },
+    {
+      "source": "fetch-profile-ok",
+      "target": "assess-tier",
+      "condition": "true"
+    },
+    {
+      "source": "fetch-profile-ok",
+      "target": "end-profile-unavailable",
+      "condition": "false"
+    },
+    {
+      "source": "api-send-premium",
+      "target": "api-send-premium-ok"
+    },
+    {
+      "source": "api-send-premium-ok",
+      "target": "end-premium",
+      "condition": "true"
+    },
+    {
+      "source": "api-send-premium-ok",
+      "target": "hitl-delivery-failed",
+      "condition": "false"
+    },
+    {
+      "source": "api-send-basic",
+      "target": "api-send-basic-ok"
+    },
+    {
+      "source": "api-send-basic-ok",
+      "target": "end-basic",
+      "condition": "true"
+    },
+    {
+      "source": "api-send-basic-ok",
+      "target": "hitl-delivery-failed",
+      "condition": "false"
+    },
+    {
+      "source": "hitl-delivery-failed",
+      "target": "end-delivery-failed"
+    }
   ],
   "metadata": {
     "difficulty": "complex",
     "industry": "E-commerce / CRM",
-    "tags": ["personalisation", "rag", "hitl", "multi-branch", "api"],
+    "tags": [
+      "personalisation",
+      "rag",
+      "hitl",
+      "multi-branch",
+      "failure-handling"
+    ],
     "sample_input": {
       "customer_id": "cust_001",
       "request": "I'd like to upgrade my subscription plan to access premium features."
