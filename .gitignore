@@ -90,3 +90,6 @@ target/
 Thumbs.db
 Desktop.ini
 /.aws-sam/build.toml
+
+# Documentation screenshot tooling logs
+docs/user-guide/capture/*.log

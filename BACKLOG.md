@@ -641,11 +641,9 @@ Starting version 0.9.0. **Follow-ups (not scheduled):** a release script that bu
 
 ---
 
-### Task 64 — User Guide `[ ]`
+### Task 64 — User Guide `[x]`
 
-- [ ] Written guide for people using AiFlow: getting started, designing a workflow, node types and their settings, simulating, test suites and run comparison, suggested changes, safety checks, exporting and importing, cloud workflows and sharing, limits and daily allowances, troubleshooting
-- [ ] Reachable from inside the app (Help menu, About dialog, and the existing ⓘ help icons linking to the matching section)
-- [ ] Kept in the repository as Markdown and published with the site; screenshots regenerated when the interface changes
+Done as described above. **Follow-ups (not scheduled):** link the matching guide section from each ⓘ help icon; a link on the landing page; guide search; a "what's new" tour on first sign-in after a release; keeping the guide in step automatically (a test that fails when a screenshot step cannot find its control is already the early warning); translations.
 
 ---
 

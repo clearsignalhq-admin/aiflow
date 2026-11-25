@@ -1,5 +1,18 @@
 # AiFlow — Current Iteration
 
+## Iteration 17 — User Guide
+
+#### Task 64 — User Guide `[x]`
+
+- [x] `docs/user-guide/README.md`: quick start, the screen, every feature, limits and allowances, shortcuts, troubleshooting, glossary; 25 screenshots
+- [x] `docs/user-guide/capture/`: Playwright script, local capture backend (fake user, in-memory storage, canned AI) and an orchestrator that regenerates every screenshot from a clean state without touching real services
+- [x] In the app: public `/guide` page (contents list, screenshots, anchors), **Help → User guide**, link from About; Markdown renderer extended with images, safe links and heading anchors
+- [x] Found while capturing and fixed: stray "0" on the Validate button; suggested fixes left a cluttered layout and a stale run overlay; suggestion cards were a wall of text; canvas cropped newly added steps; mismatched text sizes
+- [x] Version 0.10.0
+- [x] Tests: 16 new frontend (renderer, guide page, Help menu), 2 for the Validate button
+
+---
+
 ## Iteration 16 — Version Number and About
 
 #### Task 63 — Version Number and About Screen `[x]`

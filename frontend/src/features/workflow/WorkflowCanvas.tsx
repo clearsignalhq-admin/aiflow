@@ -106,8 +106,9 @@ const Canvas = memo(function Canvas({ workflow, selectedNodeId, selectedEdgeId, 
 
   useEffect(() => {
     if (!autoLayoutRevision) return;
-    const id = requestAnimationFrame(() => fitView({ duration: 350 }));
-    return () => cancelAnimationFrame(id);
+    // Wait a moment so steps that were just added have been measured; fitting sooner crops the result.
+    const id = setTimeout(() => fitView({ duration: 350 }), 150);
+    return () => clearTimeout(id);
   }, [autoLayoutRevision, fitView]);
 
   // Pan canvas to the currently-running node so it stays in view during simulation.

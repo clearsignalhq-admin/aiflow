@@ -11,6 +11,7 @@ import AdminPage from './pages/AdminPage';
 import ChangePasswordPage from './pages/ChangePasswordPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import SharedWorkflowPage from './pages/SharedWorkflowPage';
+import GuidePage from './pages/GuidePage';
 import WorkflowApp from './App';
 import './index.css';
 
@@ -27,6 +28,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/change-password" element={<ChangePasswordPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/shared/:token" element={<SharedWorkflowPage />} />
+          <Route path="/guide" element={<GuidePage />} />
 
           {/* Protected workflow editor */}
           <Route

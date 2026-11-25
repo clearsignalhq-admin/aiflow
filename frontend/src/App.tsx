@@ -460,6 +460,7 @@ export default function WorkflowApp() {
   const [showAbout, setShowAbout] = useState(false);
   const backendVersion = useBackendVersion();
   const handleOpenAbout = useCallback(() => setShowAbout(true), []);
+  const handleOpenGuide = useCallback(() => { window.open('/guide', '_blank', 'noopener,noreferrer'); }, []);
   const handleOpenCloud = useCallback(() => setShowCloud(true), []);
   const handleCloudOpen = useCallback((loaded: Workflow, id: string) => {
     if (!confirmDiscard()) return;
@@ -478,10 +479,16 @@ export default function WorkflowApp() {
   }, [flash, reset, confirmDiscard]);
   const handleOpenSafety = useCallback(() => setShowSafety(true), []);
   const handleOpenSuggest = useCallback(() => setShowSuggest(true), []);
-  const handleChangesApplied = useCallback((updated: Workflow, count: number) => {
-    setWorkflow(updated);           // one undoable edit, however many changes were applied
+  const handleChangesApplied = useCallback((updated: Workflow, count: number, addedSteps: number) => {
+    // New steps are placed next to existing ones, which gets crowded: tidy the whole layout when steps were added.
+    setWorkflow(addedSteps > 0 ? autoLayoutWorkflow(updated) : updated);   // one undoable edit, however many changes were applied
+    if (addedSteps > 0) setAutoLayoutRevision((r) => r + 1);
     setValidationState(null);       // the old findings no longer describe this workflow
-    flash(`Applied ${count} suggested change${count === 1 ? '' : 's'}`);
+    setSimulationTrace(null);       // nor does the last run
+    setSimulationEvaluation(null);
+    setCurrentSimStep(0);
+    setRightPanelView('properties');
+    flash(`Applied ${count} suggested change${count === 1 ? '' : 's'}${addedSteps > 0 ? ' and tidied the layout (Ctrl+Z undoes both)' : ''}`);
   }, [flash, setWorkflow]);
   const handleOpenMermaid = useCallback(() => setShowMermaid(true), []);
   const handleOpenSuites = useCallback(() => setShowSuites(true), []);
@@ -579,6 +586,7 @@ export default function WorkflowApp() {
         onSafety={handleOpenSafety}
         onCloud={handleOpenCloud}
         onAbout={handleOpenAbout}
+        onGuide={handleOpenGuide}
         onExportCode={handleOpenExportCode}
         onGenerate={handleGenerate}
         onRefine={handleRefine}

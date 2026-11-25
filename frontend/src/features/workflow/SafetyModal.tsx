@@ -91,7 +91,7 @@ export function SafetyModal({ workflow, onSelectNode, onClose }: Props) {
                     </span>
                     {onSelectNode && <button className="btn btn-ghost" onClick={() => onSelectNode(x.node_id)}>Show</button>}
                   </div>
-                  <div>{x.message}</div>
+                  <div className="safety-message">{x.message}</div>
                   <div className="suite-hint">{x.advice}</div>
                 </li>
               ))}

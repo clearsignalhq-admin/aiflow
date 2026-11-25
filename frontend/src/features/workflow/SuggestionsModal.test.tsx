@@ -66,16 +66,23 @@ describe('SuggestionsModal — fixes', () => {
     responses['apply-changes'] = () => ({ status: 200, body: { workflow: updated, applied: ['a'], skipped: [], added_node_ids: [] } });
     const onApply = open();
     fireEvent.click(await screen.findByRole('button', { name: 'Apply: Fix A' }));
-    await waitFor(() => expect(onApply).toHaveBeenCalledWith(updated, 1));
+    await waitFor(() => expect(onApply).toHaveBeenCalledWith(updated, 1, 0));
     expect(calls.find((c) => c.path === 'apply-changes')!.body.changes).toEqual([expect.objectContaining({ id: 'a' })]);
     expect(await screen.findByRole('status')).toHaveTextContent('1 change applied. Undo (Ctrl+Z) reverts them.');
+  });
+
+  it('tells the caller how many steps were added, so it can tidy the layout', async () => {
+    responses['apply-changes'] = () => ({ status: 200, body: { workflow: updated, applied: ['a'], skipped: [], added_node_ids: ['n1', 'n2'] } });
+    const onApply = open();
+    fireEvent.click(await screen.findByRole('button', { name: 'Apply: Fix A' }));
+    await waitFor(() => expect(onApply).toHaveBeenCalledWith(updated, 1, 2));
   });
 
   it('applies all fixes in one request', async () => {
     responses['apply-changes'] = () => ({ status: 200, body: { workflow: updated, applied: ['a', 'b'], skipped: [], added_node_ids: [] } });
     const onApply = open();
     fireEvent.click(await screen.findByRole('button', { name: 'Apply all 2 fixes' }));
-    await waitFor(() => expect(onApply).toHaveBeenCalledWith(updated, 2));
+    await waitFor(() => expect(onApply).toHaveBeenCalledWith(updated, 2, 0));
     expect((calls.find((c) => c.path === 'apply-changes')!.body.changes as unknown[]).length).toBe(2);
   });
 

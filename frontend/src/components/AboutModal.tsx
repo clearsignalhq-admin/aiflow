@@ -42,7 +42,7 @@ export function AboutModal({ backend, onClose }: Props) {
         </div>
 
         <div className="modal-body suggest-body">
-          <div className="suite-hint">Design, check, test and share AI workflows.</div>
+          <div className="suite-hint">Design, check, test and share AI workflows. <a href="/guide" target="_blank" rel="noopener noreferrer">Read the user guide</a>.</div>
 
           <dl className="about-grid" data-testid="about-versions">
             <dt>Version</dt>

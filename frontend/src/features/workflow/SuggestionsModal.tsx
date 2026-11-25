@@ -8,7 +8,7 @@ import { HelpIcon } from '../../components/HelpIcon';
 interface Props {
   workflow: Workflow;
   /** Receives the edited workflow; the caller records it as one undoable edit. */
-  onApply: (workflow: Workflow, appliedCount: number) => void;
+  onApply: (workflow: Workflow, appliedCount: number, addedStepCount: number) => void;
   onClose: () => void;
 }
 
@@ -22,9 +22,12 @@ function ChangeCard({ change, busy, onApply }: { change: SuggestedChange; busy: 
         <button className="btn btn-primary" disabled={busy} onClick={onApply} aria-label={`Apply: ${change.title}`}>Apply</button>
       </div>
       {change.rationale && <div className="suite-hint">{change.rationale}</div>}
-      <ul className="change-card-ops">
-        {change.summary.map((line, i) => <li key={i}>{line}</li>)}
-      </ul>
+      <details className="change-card-details">
+        <summary>What this changes ({change.summary.length} edit{change.summary.length === 1 ? '' : 's'})</summary>
+        <ul className="change-card-ops">
+          {change.summary.map((line, i) => <li key={i}>{line}</li>)}
+        </ul>
+      </details>
     </li>
   );
 }
@@ -67,7 +70,7 @@ export function SuggestionsModal({ workflow, onApply, onClose }: Props) {
     try {
       const result = await changeApi.apply(token, workflow, changes);
       if (result.applied.length > 0) {
-        onApply(result.workflow, result.applied.length);
+        onApply(result.workflow, result.applied.length, result.added_node_ids.length);
         setAi((prev) => (prev ? { ...prev, changes: prev.changes.filter((c) => !result.applied.includes(c.id)) } : prev));
       }
       const skipped = result.skipped.map((s) => `“${changes.find((c) => c.id === s.id)?.title ?? s.id}”: ${s.reason}`);

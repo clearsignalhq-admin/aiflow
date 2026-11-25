@@ -41,6 +41,16 @@ describe('Toolbar — layout', () => {
     expect(screen.getByRole('button', { name: /Validate/ })).toHaveTextContent('2');
   });
 
+  it('shows no badge (and no stray 0) when validation found nothing', () => {
+    setup({ validationResult: { valid: true, errors: [], warnings: [] } });
+    expect(screen.getByRole('button', { name: 'Validate' })).toHaveTextContent(/^Validate$/);
+  });
+
+  it('shows the warning count when there are only warnings', () => {
+    setup({ validationResult: { valid: true, errors: [], warnings: ['w1', 'w2', 'w3'] } });
+    expect(screen.getByRole('button', { name: /Validate/ })).toHaveTextContent('Validate3');
+  });
+
   it('edits the workflow name', () => {
     const h = setup();
     fireEvent.change(screen.getByLabelText('Workflow name'), { target: { value: 'New name' } });

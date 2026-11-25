@@ -36,6 +36,7 @@ interface Props {
   onSafety?: () => void;
   onCloud?: () => void;
   onAbout?: () => void;
+  onGuide?: () => void;
   onExportCode?: () => void;
 }
 
@@ -47,7 +48,7 @@ export function Toolbar(props: Props) {
     workflowName, onNew, onSave, onOpen, onOpenExamplePicker, onValidate, onGenerate, onRefine, canRefine = false,
     onSimulate, onEditJson, onNameChange, isValidating, validationResult, isDark = true, onToggleTheme,
     onUndo, onRedo, canUndo = false, canRedo = false, onReport, onHistory, onTests, onMermaid, onExplain,
-    onSuggest, onSafety, onCloud, onExportCode, onAbout,
+    onSuggest, onSafety, onCloud, onExportCode, onAbout, onGuide,
   } = props;
 
   const [openMenu, setOpenMenu] = useState<string | null>(null);
@@ -55,7 +56,7 @@ export function Toolbar(props: Props) {
   const closeMenu = useCallback(() => setOpenMenu(null), []);
 
   const hasErrors = validationResult && !validationResult.valid;
-  const hasWarnings = validationResult?.warnings.length;
+  const hasWarnings = (validationResult?.warnings.length ?? 0) > 0;   // a number here would print "0" on the button
 
   // Ctrl/⌘+K opens the palette from anywhere.
   useEffect(() => {
@@ -91,11 +92,12 @@ export function Toolbar(props: Props) {
       { id: 'history:runs', label: 'Run history', group: 'Analyze', hint: 'Saved simulation runs', onSelect: onHistory, disabledReason: 'Not available' },
     ];
     const help: ActionItem[] = [
+      { id: 'help:guide', label: 'User guide', group: 'Help', hint: 'Step-by-step guide with screenshots (opens in a new tab)', onSelect: onGuide, disabledReason: 'Not available' },
       { id: 'help:search', label: 'Search actions', group: 'Help', hint: 'Find any action by name', shortcut: `${MOD} K`, onSelect: () => setPaletteOpen(true) },
       { id: 'about:about', label: 'About AiFlow', group: 'Help', hint: 'Version, what is new, and version info for bug reports', onSelect: onAbout, disabledReason: 'Not available' },
     ];
     return { file, export: exportItems, analyze, help };
-  }, [onAbout, onNew, onOpen, onSave, onCloud, onOpenExamplePicker, onEditJson, onExportCode, onMermaid, onReport, onExplain, onSuggest, onSafety, onHistory]);
+  }, [onAbout, onGuide, onNew, onOpen, onSave, onCloud, onOpenExamplePicker, onEditJson, onExportCode, onMermaid, onReport, onExplain, onSuggest, onSafety, onHistory]);
 
   // Everything, for the palette: the menu items plus the actions that sit directly on the bar.
   const allActions = useMemo<ActionItem[]>(() => [
